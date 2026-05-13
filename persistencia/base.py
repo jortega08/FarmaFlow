@@ -1,0 +1,10 @@
+"""Base declarativa para los modelos ORM."""
+
+from __future__ import annotations
+
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    """Base comun para los modelos SQLAlchemy."""
+

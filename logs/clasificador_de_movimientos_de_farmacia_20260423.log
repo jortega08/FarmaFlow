@@ -1,0 +1,53 @@
+2026-04-23 00:23:20 | INFO | logica.lector_excel | Iniciando carga de archivo: C:\Users\mondr\Downloads\archivo_prueba_clasificador_oracle.xlsx
+2026-04-23 00:23:21 | INFO | logica.lector_excel | Archivo cargado correctamente. Hoja: MOVIMIENTOS_ORACLE, filas: 123, columnas: 15
+2026-04-23 00:23:21 | INFO | logica.validador_estructura | Iniciando validacion estructural con 15 columnas.
+2026-04-23 00:23:21 | INFO | logica.validador_estructura | Validacion finalizada. Estructura valida: False. Faltantes: 7. Mapeadas: 0.
+2026-04-23 00:23:21 | WARNING | logica.lector_excel | La estructura del archivo es invalida. Columnas faltantes: ['SUBINVENTARIO', 'ORG_ORIGEN', 'ORG_DESTINO', 'TIPO_TRANSACCION', 'TIPO_ORIGEN', 'ORIGEN', 'MOTIVO']
+2026-04-23 00:23:21 | INFO | interfaz.ventana_principal | Resumen de archivo actualizado para: archivo_prueba_clasificador_oracle.xlsx
+2026-04-23 00:25:29 | INFO | logica.lector_excel | Iniciando carga de archivo: C:\Users\mondr\Downloads\archivo_prueba_clasificador_oracle_limpio.xlsx
+2026-04-23 00:25:29 | INFO | logica.lector_excel | Archivo cargado correctamente. Hoja: MOVIMIENTOS_ORACLE, filas: 120, columnas: 15
+2026-04-23 00:25:29 | INFO | logica.validador_estructura | Iniciando validacion estructural con 15 columnas.
+2026-04-23 00:25:29 | INFO | logica.validador_estructura | Validacion finalizada. Estructura valida: True. Faltantes: 0. Mapeadas: 7.
+2026-04-23 00:25:29 | INFO | logica.normalizador_datos | Iniciando normalizacion de datos.
+2026-04-23 00:25:29 | INFO | logica.normalizador_datos | Normalizacion completada sobre 7 columnas canonicas.
+2026-04-23 00:25:29 | INFO | logica.detector_farmacias | Iniciando deteccion preliminar de farmacias.
+2026-04-23 00:25:29 | INFO | logica.detector_farmacias | Deteccion de farmacias finalizada. Candidatas encontradas: 3.
+2026-04-23 00:25:29 | INFO | logica.clasificador_tipologia | Iniciando preclasificacion con 5 reglas.
+2026-04-23 00:25:29 | INFO | logica.clasificador_tipologia | Preclasificacion finalizada. Clasificados: 88. Sin clasificar: 32.
+2026-04-23 00:25:29 | INFO | interfaz.ventana_principal | Resumen de archivo actualizado para: archivo_prueba_clasificador_oracle_limpio.xlsx
+2026-04-23 00:41:21 | INFO | logica.lector_excel | Iniciando carga de archivo: C:\Users\mondr\Downloads\archivo_prueba_clasificador_oracle_limpio.xlsx
+2026-04-23 00:41:21 | INFO | logica.lector_excel | Archivo cargado correctamente. Hoja: MOVIMIENTOS_ORACLE, filas: 120, columnas: 15
+2026-04-23 00:41:21 | INFO | logica.validador_estructura | Iniciando validacion estructural con 15 columnas.
+2026-04-23 00:41:21 | INFO | logica.validador_estructura | Validacion finalizada. Estructura valida: True. Faltantes: 0. Mapeadas: 7.
+2026-04-23 00:41:21 | INFO | logica.normalizador_datos | Iniciando normalizacion de datos.
+2026-04-23 00:41:21 | INFO | logica.normalizador_datos | Normalizacion completada sobre 7 columnas canonicas.
+2026-04-23 00:41:21 | INFO | logica.detector_farmacias | Iniciando deteccion preliminar de farmacias.
+2026-04-23 00:41:21 | INFO | logica.detector_farmacias | Deteccion de farmacias finalizada. Candidatas encontradas: 3.
+2026-04-23 00:41:21 | INFO | logica.clasificador_tipologia | Iniciando preclasificacion con 5 reglas.
+2026-04-23 00:41:21 | INFO | logica.clasificador_tipologia | Preclasificacion finalizada. Clasificados: 88. Sin clasificar: 32.
+2026-04-23 00:41:21 | INFO | interfaz.ventana_principal | Resumen de archivo actualizado para: archivo_prueba_clasificador_oracle_limpio.xlsx
+2026-04-23 00:41:35 | INFO | logica.exportador_excel | Iniciando exportacion Excel en: C:\Users\mondr\OneDrive\Documentos\Proyectos\clasificador_movimientos\clasificador_farmacia\salidas\clasificado_archivo_prueba_clasificador_oracle_limpio_20260423_004135.xlsx
+2026-04-23 00:41:35 | INFO | logica.exportador_excel | Exportacion finalizada. Hojas generadas: ORIGINAL, DETALLE_CLASIFICADO, RESUMEN_TIPOLOGIA, RESUMEN_FARMACIA, CRUCE_FARMACIA_TIPOLOGIA, SIN_CLASIFICAR. Ruta final: C:\Users\mondr\OneDrive\Documentos\Proyectos\clasificador_movimientos\clasificador_farmacia\salidas\clasificado_archivo_prueba_clasificador_oracle_limpio_20260423_004135.xlsx
+2026-04-23 00:41:35 | INFO | interfaz.ventana_principal | Exportacion completada: C:\Users\mondr\OneDrive\Documentos\Proyectos\clasificador_movimientos\clasificador_farmacia\salidas\clasificado_archivo_prueba_clasificador_oracle_limpio_20260423_004135.xlsx
+2026-04-23 01:26:59 | INFO | logica.lector_excel | Iniciando carga de archivo: C:\Users\mondr\Downloads\archivo_prueba_clasificador_oracle_limpio.xlsx
+2026-04-23 01:26:59 | INFO | logica.lector_excel | Archivo cargado correctamente. Hoja: MOVIMIENTOS_ORACLE, filas: 120, columnas: 15
+2026-04-23 01:26:59 | INFO | logica.validador_estructura | Iniciando validacion estructural con 15 columnas.
+2026-04-23 01:26:59 | INFO | logica.validador_estructura | Validacion finalizada. Estructura valida: True. Faltantes: 0. Mapeadas: 7.
+2026-04-23 01:26:59 | INFO | logica.normalizador_datos | Iniciando normalizacion de datos.
+2026-04-23 01:26:59 | INFO | logica.normalizador_datos | Normalizacion completada sobre 7 columnas canonicas.
+2026-04-23 01:26:59 | INFO | logica.detector_farmacias | Iniciando deteccion preliminar de farmacias.
+2026-04-23 01:26:59 | INFO | logica.detector_farmacias | Deteccion de farmacias finalizada. Candidatas encontradas: 3.
+2026-04-23 01:26:59 | INFO | logica.clasificador_tipologia | Iniciando preclasificacion con 5 reglas.
+2026-04-23 01:26:59 | INFO | logica.clasificador_tipologia | Preclasificacion finalizada. Clasificados: 88. Sin clasificar: 32.
+2026-04-23 01:26:59 | INFO | interfaz.ventana_principal | Resumen de archivo actualizado para: archivo_prueba_clasificador_oracle_limpio.xlsx
+2026-04-23 01:57:13 | INFO | logica.lector_excel | Iniciando carga de archivo: C:\Users\mondr\Downloads\archivo_prueba_clasificador_oracle_limpio.xlsx
+2026-04-23 01:57:13 | INFO | logica.lector_excel | Archivo cargado correctamente. Hoja: MOVIMIENTOS_ORACLE, filas: 120, columnas: 15
+2026-04-23 01:57:13 | INFO | logica.validador_estructura | Iniciando validacion estructural con 15 columnas.
+2026-04-23 01:57:13 | INFO | logica.validador_estructura | Validacion finalizada. Estructura valida: True. Faltantes: 0. Mapeadas: 7.
+2026-04-23 01:57:13 | INFO | logica.normalizador_datos | Iniciando normalizacion de datos.
+2026-04-23 01:57:13 | INFO | logica.normalizador_datos | Normalizacion completada sobre 7 columnas canonicas.
+2026-04-23 01:57:13 | INFO | logica.detector_farmacias | Iniciando deteccion preliminar de farmacias.
+2026-04-23 01:57:13 | INFO | logica.detector_farmacias | Deteccion de farmacias finalizada. Candidatas encontradas: 3.
+2026-04-23 01:57:13 | INFO | logica.clasificador_tipologia | Iniciando preclasificacion con 5 reglas.
+2026-04-23 01:57:13 | INFO | logica.clasificador_tipologia | Preclasificacion finalizada. Clasificados: 88. Sin clasificar: 32.
+2026-04-23 01:57:13 | INFO | interfaz.ventana_principal | Resumen de archivo actualizado para: archivo_prueba_clasificador_oracle_limpio.xlsx

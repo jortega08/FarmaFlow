@@ -1,0 +1,72 @@
+[
+  {
+    "nombre_regla": "ajustes_base_captura_vencido",
+    "prioridad": 10,
+    "condiciones": {
+      "SUBINVENTARIO": ["AVE_VENCID"],
+      "ORG_ORIGEN": ["*"],
+      "ORG_DESTINO": ["16_FARMA_FARMACIA_INTERNA_CRS"],
+      "TIPO_TRANSACCION": ["ACCOUNT_ALIAS_ISSUE"],
+      "TIPO_ORIGEN": ["ACCOUNT_ALIAS"],
+      "ORIGEN": ["*"],
+      "MOTIVO": ["08_VENCIDO"]
+    },
+    "resultado": "AJUSTES_BASE_CAPTURA"
+  },
+  {
+    "nombre_regla": "ajustes_base_captura_averiado",
+    "prioridad": 10,
+    "condiciones": {
+      "SUBINVENTARIO": ["AVE_VENCID", "DISPONIBLE"],
+      "ORG_ORIGEN": ["*"],
+      "ORG_DESTINO": ["16_FARMA_FARMACIA_INTERNA_CRS"],
+      "TIPO_TRANSACCION": ["ACCOUNT_ALIAS_ISSUE"],
+      "TIPO_ORIGEN": ["ACCOUNT_ALIAS"],
+      "ORIGEN": ["*"],
+      "MOTIVO": ["09_AVERIADO"]
+    },
+    "resultado": "AJUSTES_BASE_CAPTURA"
+  },
+  {
+    "nombre_regla": "conteo_ciclico",
+    "prioridad": 20,
+    "condiciones": {
+      "SUBINVENTARIO": ["DISPONIBLE"],
+      "ORG_ORIGEN": ["*"],
+      "ORG_DESTINO": ["16_FARMA_FARMACIA_INTERNA_CRS"],
+      "TIPO_TRANSACCION": ["CYCLE_COUNT_ADJUST"],
+      "TIPO_ORIGEN": ["CYCLE_COUNT"],
+      "ORIGEN": ["*"],
+      "MOTIVO": ["*"]
+    },
+    "resultado": "CONTEO_CICLICO"
+  },
+  {
+    "nombre_regla": "devoluciones",
+    "prioridad": 30,
+    "condiciones": {
+      "SUBINVENTARIO": ["DISPONIBLE"],
+      "ORG_ORIGEN": ["*"],
+      "ORG_DESTINO": ["16_FARMA_FARMACIA_INTERNA_CRS"],
+      "TIPO_TRANSACCION": ["RMA_RECEIPT"],
+      "TIPO_ORIGEN": ["RMA"],
+      "ORIGEN": ["*"],
+      "MOTIVO": ["*"]
+    },
+    "resultado": "DEVOLUCIONES"
+  },
+  {
+    "nombre_regla": "dispensacion_por_consumo",
+    "prioridad": 40,
+    "condiciones": {
+      "SUBINVENTARIO": ["DISPONIBLE"],
+      "ORG_ORIGEN": ["*"],
+      "ORG_DESTINO": ["16_FARMA_FARMACIA_INTERNA_CRS"],
+      "TIPO_TRANSACCION": ["SALES_ORDER_ISSUE"],
+      "TIPO_ORIGEN": ["SALES_ORDER"],
+      "ORIGEN": ["MASIVO_CONSUMO.ORDER"],
+      "MOTIVO": ["*"]
+    },
+    "resultado": "DISPENSACION_POR_CONSUMO"
+  }
+]

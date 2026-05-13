@@ -1,0 +1,813 @@
+[
+  {
+    "nombre_regla": "ajustes_base_captura",
+    "prioridad": 10,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "ACCOUNT_ALIAS_ISSUE"
+      ],
+      "TIPO_ORIGEN": [
+        "ACCOUNT_ALIAS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS",
+        "256_FARMA_URGENCIAS_CRS"
+      ],
+      "ORIGEN": [
+        "AA PRODUCTOS AVERIADOS DE PUNTOS",
+        "AA PROXIMOS A VENCER DE PUNTOS",
+        "ANEXO 6 SALIDA DESTRUCCION MCE",
+        "ANEXO 6 SALIDA DESTRUCCIËN MCE"
+      ]
+    },
+    "resultado": "AJUSTES_BASE_CAPTURA"
+  },
+  {
+    "nombre_regla": "ajustes_inconsistencias_1",
+    "prioridad": 10,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "ACCOUNT_ALIAS_ISSUE"
+      ],
+      "TIPO_ORIGEN": [
+        "ACCOUNT_ALIAS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "ORIGEN": [
+        "LEGALIZACION INCONSIST DEVOLUCIONES PTO",
+        "LEGALIZACION INCONSISTENCIAS DESPACHO",
+        "MERMAS CEDI POR LEGALIZACION INCONSIST"
+      ]
+    },
+    "resultado": "AJUSTES_INCONSISTENCIAS"
+  },
+  {
+    "nombre_regla": "ajustes_inconsistencias_2",
+    "prioridad": 10,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "ACCOUNT_ALIAS_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "ACCOUNT_ALIAS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "ORIGEN": [
+        "LEGALIZACION INCONSIST DEVOLUCIONES PTO",
+        "LEGALIZACION INCONSISTENCIAS DESPACHO",
+        "MERMAS CEDI POR LEGALIZACION INCONSIST"
+      ]
+    },
+    "resultado": "AJUSTES_INCONSISTENCIAS"
+  },
+  {
+    "nombre_regla": "prestamos_bopos_1",
+    "prioridad": 10,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "ACCOUNT_ALIAS_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "ACCOUNT_ALIAS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS"
+      ],
+      "ORIGEN": [
+        "MOVIMIENTOS BOPOS-EBS"
+      ]
+    },
+    "resultado": "PRESTAMOS_BOPOS"
+  },
+  {
+    "nombre_regla": "prestamos_bopos_2",
+    "prioridad": 10,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "ACCOUNT_ALIAS_ISSUE"
+      ],
+      "TIPO_ORIGEN": [
+        "ACCOUNT_ALIAS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS"
+      ],
+      "ORIGEN": [
+        "MOVIMIENTOS BOPOS-EBS"
+      ]
+    },
+    "resultado": "PRESTAMOS_BOPOS"
+  },
+  {
+    "nombre_regla": "entradas_cedi",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "ACCOUNT_ALIAS_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "ACCOUNT_ALIAS"
+      ],
+      "ORG_ORIGEN": [
+        "1058_CRUZ_VERDE_CEDI_COTA_ALMACEN_PRINCIPAL",
+        "337_FARMA_NO_VENDIBLE",
+        "901_CRUZ_VERDE_ALMACEN_DE_AVERIADOS",
+        "991_CRUZ_VERDE_PICKING_DEVOLUCIONES"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_CEDI"
+  },
+  {
+    "nombre_regla": "entradas_central_prep_1",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INT_REQ_INTR_RCPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INTERNAL_REQUISITION"
+      ],
+      "ORG_ORIGEN": [
+        "104_FARMA_CENTRAL_PREP_BOG"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_CENTRAL_PREP"
+  },
+  {
+    "nombre_regla": "entradas_central_prep_2",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INTERNAL_REQUISITION"
+      ],
+      "ORG_ORIGEN": [
+        "104_FARMA_CENTRAL_PREP_BOG"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_CENTRAL_PREP"
+  },
+  {
+    "nombre_regla": "entradas_central_prep_3",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INT_REQ_INTR_RCPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_ORIGEN": [
+        "104_FARMA_CENTRAL_PREP_BOG"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_CENTRAL_PREP"
+  },
+  {
+    "nombre_regla": "entradas_central_prep_4",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_ORIGEN": [
+        "104_FARMA_CENTRAL_PREP_BOG"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_CENTRAL_PREP"
+  },
+  {
+    "nombre_regla": "entradas_central_rere",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_RECEIPT",
+        "INT_REQ_INTR_RCPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY",
+        "INTERNAL_REQUISITION"
+      ],
+      "ORG_ORIGEN": [
+        "702_CRUZ_VERDE_CENTRAL_REEMPAQUE_REENVASE"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_CENTRAL_RERE"
+  },
+  {
+    "nombre_regla": "entradas_consignacion",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_ORIGEN": [
+        "102_FARMA_CONSIGN_PROV_CRS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_CONSIGNACION"
+  },
+  {
+    "nombre_regla": "traslados_hacia_cedi",
+    "prioridad": 20,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_SHIPMENT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_ORIGEN": [
+        "373_CRUZ_VERDE_ALMACEN_DEVOLUCIONES",
+        "800_CRUZ_VERDE_RETIRO"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "TRASLADOS_HACIA_CEDI"
+  },
+  {
+    "nombre_regla": "entradas_prestamos_internos",
+    "prioridad": 30,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_ORIGEN": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_PRESTAMOS_INTERNOS"
+  },
+  {
+    "nombre_regla": "salidas_prestamos_internos",
+    "prioridad": 30,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_SHIPMENT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_ORIGEN": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "SALIDAS_PRESTAMOS_INTERNOS"
+  },
+  {
+    "nombre_regla": "salidas_prestamos_externos_1",
+    "prioridad": 40,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_SHIPMENT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_ORIGEN": [
+        "104_FARMA_CENTRAL_PREP_BOG",
+        "1368_CRUZ_VERDE_CONSUMO_CUC_FIH",
+        "1557_CRUZ_VERDE_FIH_CLINICA_EIREN",
+        "19_FARMA_ALMACEN_GENERAL_VILLAVICENCIO",
+        "20_FARMA_CLINICA_COUNTRY",
+        "228_FARMA_FARMACIA_INTERNA_CUC",
+        "255_FARMA_ALMACEN_CIRUGIA_CUC",
+        "259_FARMA_URGENCIAS_CUC",
+        "26_FARMA_FARMACIA_INTERNA_CSB",
+        "27_FARMA_CLINICA_VERSALLES",
+        "288_FARMA_ALMACEN_GENERAL_CUC",
+        "306_FARMA_CLINICA_CAMPO_ABIERTO",
+        "315_CRUZ_VERDE_CANCEROLOGICO",
+        "323_FAR_CO_UNI_RENAL",
+        "332_FARMA_INTERNA_UCI_CUC",
+        "349_FARMA_CLINICA_DE_LA_MUJER",
+        "350_CLINICA CONSULTA EXTERNA CUC",
+        "351_FARMACIA_INTERNA_CLINICA SANTA MARIA DEL LAGO",
+        "352_FARMACIA_UCI_CLINICA_SANTA MARIA DEL LAGO",
+        "353_FARMACIA_CIRUGIA_CLINICA SANTA MARIA DEL LAGO",
+        "368_FARMACIA_CLINICENTRO_CHIA",
+        "39_FARMA_CLINICA_CECIMIN",
+        "474_FARMA_ALMACEN_CLINICA_IBEROAMERICANA",
+        "480_VIRTUAL_FACTURACION_CLIENTE_EXTERNO",
+        "485_FARMACIA_URGENCIAS_CENTRAL DE URGENCIAS",
+        "486_FARMACIA_GENERAL_CENTRAL_DE_URGENCIAS",
+        "489_FARMACIA_INTERNA_CLINICA_PEDIATRICA",
+        "491_FARMACIA_CIRUGIA_CLINICA_PEDIATRICA",
+        "903_FARMA_CLINICA_DEL_CARMEN",
+        "909_CRUZ_VERDE_FARMACIA_CENTRAL_DE_URGENCIAS_NORTE-TOBERIN",
+        "919_CRUZ_VERDE_FARMACIA_EDIFICIO_BLUE",
+        "920_CRUZ_VERDE_COMPENSAR_CARRERA_15",
+        "922_CRUZ_VERDE_FIH_SANTA_BARBARA_PALMIRA_VALLE",
+        "931_FARMA_ALMACEN_CLINICA_IBAGUE_KERALTY",
+        "983_FARMACIA_INTERNA_CRUZ_VERDE_CLINICA SAN LUIS",
+        "48_FARMA_ALMACEN_CIRUGIA_CSB"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "SALIDAS_PRESTAMOS_EXTERNOS"
+  },
+  {
+    "nombre_regla": "salidas_prestamos_externos_2",
+    "prioridad": 40,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INT_ORDER_INTR_SHIP"
+      ],
+      "TIPO_ORIGEN": [
+        "INTERNAL_ORDER"
+      ],
+      "ORG_ORIGEN": [
+        "104_FARMA_CENTRAL_PREP_BOG",
+        "1368_CRUZ_VERDE_CONSUMO_CUC_FIH",
+        "1557_CRUZ_VERDE_FIH_CLINICA_EIREN",
+        "19_FARMA_ALMACEN_GENERAL_VILLAVICENCIO",
+        "20_FARMA_CLINICA_COUNTRY",
+        "228_FARMA_FARMACIA_INTERNA_CUC",
+        "255_FARMA_ALMACEN_CIRUGIA_CUC",
+        "259_FARMA_URGENCIAS_CUC",
+        "26_FARMA_FARMACIA_INTERNA_CSB",
+        "27_FARMA_CLINICA_VERSALLES",
+        "288_FARMA_ALMACEN_GENERAL_CUC",
+        "306_FARMA_CLINICA_CAMPO_ABIERTO",
+        "315_CRUZ_VERDE_CANCEROLOGICO",
+        "323_FAR_CO_UNI_RENAL",
+        "332_FARMA_INTERNA_UCI_CUC",
+        "349_FARMA_CLINICA_DE_LA_MUJER",
+        "350_CLINICA CONSULTA EXTERNA CUC",
+        "351_FARMACIA_INTERNA_CLINICA SANTA MARIA DEL LAGO",
+        "352_FARMACIA_UCI_CLINICA_SANTA MARIA DEL LAGO",
+        "353_FARMACIA_CIRUGIA_CLINICA SANTA MARIA DEL LAGO",
+        "368_FARMACIA_CLINICENTRO_CHIA",
+        "39_FARMA_CLINICA_CECIMIN",
+        "474_FARMA_ALMACEN_CLINICA_IBEROAMERICANA",
+        "480_VIRTUAL_FACTURACION_CLIENTE_EXTERNO",
+        "485_FARMACIA_URGENCIAS_CENTRAL DE URGENCIAS",
+        "486_FARMACIA_GENERAL_CENTRAL_DE_URGENCIAS",
+        "489_FARMACIA_INTERNA_CLINICA_PEDIATRICA",
+        "491_FARMACIA_CIRUGIA_CLINICA_PEDIATRICA",
+        "903_FARMA_CLINICA_DEL_CARMEN",
+        "909_CRUZ_VERDE_FARMACIA_CENTRAL_DE_URGENCIAS_NORTE-TOBERIN",
+        "919_CRUZ_VERDE_FARMACIA_EDIFICIO_BLUE",
+        "920_CRUZ_VERDE_COMPENSAR_CARRERA_15",
+        "922_CRUZ_VERDE_FIH_SANTA_BARBARA_PALMIRA_VALLE",
+        "931_FARMA_ALMACEN_CLINICA_IBAGUE_KERALTY",
+        "983_FARMACIA_INTERNA_CRUZ_VERDE_CLINICA SAN LUIS",
+        "48_FARMA_ALMACEN_CIRUGIA_CSB"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "SALIDAS_PRESTAMOS_EXTERNOS"
+  },
+  {
+    "nombre_regla": "entradas_prestamos_externos_inventory",
+    "prioridad": 40,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INTRANSIT_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INVENTORY"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_PRESTAMOS_EXTERNOS"
+  },
+  {
+    "nombre_regla": "entradas_prestamos_externos_internal_requisition",
+    "prioridad": 40,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "INT_REQ_INTR_RCPT",
+        "ACCOUNT_ALIAS_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "INTERNAL_REQUISITION",
+        "ACCOUNT_ALIAS"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ENTRADAS_PRESTAMOS_EXTERNOS"
+  },
+  {
+    "nombre_regla": "devoluciones",
+    "prioridad": 50,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "RMA_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "RMA"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "DEVOLUCIONES"
+  },
+  {
+    "nombre_regla": "dispensacion",
+    "prioridad": 50,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "SALES_ORDER_ISSUE"
+      ],
+      "TIPO_ORIGEN": [
+        "SALES_ORDER"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "DISPENSACION_AL_PACIENTE"
+  },
+  {
+    "nombre_regla": "ordenes_de_compra",
+    "prioridad": 50,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "PO_RECEIPT"
+      ],
+      "TIPO_ORIGEN": [
+        "PURCHASE_ORDER"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "ORDENES_DE_COMPRA"
+  },
+  {
+    "nombre_regla": "conteo_ciclico_fallback",
+    "prioridad": 999,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "CYCLE_COUNT_ADJUST"
+      ],
+      "TIPO_ORIGEN": [
+        "CYCLE_COUNT"
+      ]
+    },
+    "resultado": "CONTEO_CICLICO"
+  },
+  {
+    "nombre_regla": "otros_ajustes",
+    "prioridad": 900,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "Account alias issue",
+        "Account alias receipt"
+      ],
+      "TIPO_ORIGEN": [
+        "Account alias"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "ORG_ORIGEN": {
+        "operador": "VACIO"
+      }
+    },
+    "resultado": "OTROS_AJUSTES"
+  },
+  {
+    "nombre_regla": "efecto_cero_subinventory_transfer",
+    "prioridad": 900,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "Subinventory Transfer"
+      ],
+      "TIPO_ORIGEN": [
+        "Inventory"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "EFECTO_CERO"
+  },
+  {
+    "nombre_regla": "efecto_cero_internal_order_pick",
+    "prioridad": 900,
+    "condiciones": {
+      "TIPO_TRANSACCION": [
+        "Internal Order Pick"
+      ],
+      "TIPO_ORIGEN": [
+        "Internal order"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "256_FARMA_URGENCIAS_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ]
+    },
+    "resultado": "EFECTO_CERO"
+  },
+  {
+    "nombre_regla": "alistamiento_pyxis",
+    "prioridad": 999,
+    "condiciones": {
+      "ORG_ORIGEN": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "ORG_DESTINO": [
+        "256_FARMA_URGENCIAS_CRS"
+      ],
+      "SUBINVENTARIO": [
+        "PYXIS_URGE"
+      ],
+      "TIPO_TRANSACCION": [
+        "Intransit Receipt"
+      ],
+      "TIPO_ORIGEN": [
+        "Inventory"
+      ],
+      "TIPOLOGIA": [
+        "ENTRADAS_PRESTAMOS_INTERNOS"
+      ]
+    },
+    "resultado": "ALISTAMIENTO_PYXIS"
+  },
+  {
+    "nombre_regla": "dispensacion_por_consumo",
+    "prioridad": 998,
+    "condiciones": {
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS"
+      ],
+      "TIPO_TRANSACCION": [
+        "Sales order issue"
+      ],
+      "TIPO_ORIGEN": [
+        "Sales order"
+      ],
+      "ORIGEN": {
+        "operador": "CONTIENE",
+        "valores": [
+          "CONSUMO",
+          "MASIVO_CONSUMO.ORDER"
+        ]
+      },
+      "TIPOLOGIA": [
+        "DISPENSACION_AL_PACIENTE"
+      ]
+    },
+    "resultado": "DISPENSACION_POR_CONSUMO"
+  },
+  {
+    "nombre_regla": "dispensacion_al_paciente_mce",
+    "prioridad": 999,
+    "condiciones": {
+      "ORG_DESTINO": [
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "TIPO_TRANSACCION": [
+        "Sales order issue"
+      ],
+      "TIPO_ORIGEN": [
+        "Sales order"
+      ],
+      "TIPOLOGIA": [
+        "DISPENSACION_AL_PACIENTE"
+      ],
+      "ARTICULO": [
+        "21817",
+        "71837",
+        "73796",
+        "383679",
+        "386588",
+        "162397",
+        "390482",
+        "388907",
+        "109046",
+        "548339",
+        "555234",
+        "109491",
+        "393397",
+        "60744",
+        "388908",
+        "37785",
+        "561531",
+        "534011",
+        "106876",
+        "169534",
+        "167725",
+        "123778",
+        "106877",
+        "135679",
+        "525052",
+        "137151",
+        "384851"
+      ]
+    },
+    "resultado": "DISPENSACION_AL_PACIENTE_MCE"
+  },
+  {
+    "nombre_regla": "entradas_mce",
+    "prioridad": 999,
+    "condiciones": {
+      "ARTICULO": [
+        "21817",
+        "71837",
+        "73796",
+        "383679",
+        "386588",
+        "162397",
+        "390482",
+        "388907",
+        "109046",
+        "548339",
+        "555234",
+        "109491",
+        "393397",
+        "60744",
+        "388908",
+        "37785",
+        "561531",
+        "534011",
+        "106876",
+        "169534",
+        "167725",
+        "123778",
+        "106877",
+        "135679",
+        "525052",
+        "137151",
+        "384851"
+      ],
+      "ORG_ORIGEN":[
+        "16_FARMA_FARMACIA_INTERNA_CRS"
+      ],
+      "ORG_DESTINO":[
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "TIPO_TRANSACCION":[
+        "Intransit Receipt"
+      ],
+      "TIPO_ORIGEN":[
+        "Inventory"
+      ],
+      "TIPOLOGIA":[
+        "ENTRADAS_PRESTAMOS_INTERNOS"
+      ]
+    },
+    "resultado": "ENTRADAS_MCE"
+  },
+  {
+    "nombre_regla": "abastecimiento_liquidos",
+    "prioridad": 999,
+    "condiciones": {
+      "ARTICULO": [
+        "63192",
+        "19891",
+        "388835",
+        "19929",
+        "388839",
+        "388828",
+        "388832",
+        "19949",
+        "100479",
+        "19967",
+        "140663",
+        "388840",
+        "32219",
+        "388856"
+      ],
+      "ORG_ORIGEN": [
+        "16_FARMA_FARMACIA_INTERNA_CRS"
+      ],
+      "ORG_DESTINO": [
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "TIPO_TRANSACCION": [
+        "Intransit Receipt"
+      ],
+      "TIPO_ORIGEN": [
+        "Inventory"
+      ],
+      "TIPOLOGIA": [
+        "ENTRADAS_PRESTAMOS_INTERNOS"
+      ]
+    },
+    "resultado": "ABASTECIMIENTO_DE_LIQUIDOS"
+  },
+  {
+    "nombre_regla": "entradas_central_prep_unidosis",
+    "prioridad": 999,
+    "condiciones": {
+      "SUBINVENTARIO": [
+        "UNIDOSIS"
+      ],
+      "ORG_ORIGEN": [
+        "104_FARMA_CENTRAL_PREP_BOG"
+      ],
+      "ORG_DESTINO": [
+        "16_FARMA_FARMACIA_INTERNA_CRS",
+        "47_FARMA_ALMACEN_CIRUGIA_CRS"
+      ],
+      "TIPO_TRANSACCION": [
+        "Int Req Intr Rcpt",
+        "Intransit Receipt"
+      ],
+      "TIPO_ORIGEN": [
+        "Internal requisition",
+        "Inventory"
+      ],
+      "TIPOLOGIA": [
+        "ENTRADAS_CENTRAL_PREP"
+      ]
+    },
+    "resultado": "ENTRADAS_CENTRAL_PREP_UNIDOSIS"
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "nombre_aplicacion": "FarmaFlow",
+  "ancho_ventana": 1180,
+  "alto_ventana": 760,
+  "hoja_por_defecto": "Movimientos",
+  "ruta_salidas": "salidas",
+  "ruta_datos": "datos",
+  "ruta_logs": "logs"
+}

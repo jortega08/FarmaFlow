@@ -1,0 +1,6 @@
+.tmp_test
+__pycache__
+-pytest_cache
+.spreadsheets_build
+build
+datos_prueba

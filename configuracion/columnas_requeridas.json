@@ -1,0 +1,19 @@
+{
+  "origen": "Oracle",
+  "version": 2,
+  "columnas_requeridas": [
+    "SUBINVENTARIO",
+    "ORG_ORIGEN",
+    "ORG_DESTINO",
+    "TIPO_TRANSACCION",
+    "TIPO_ORIGEN",
+    "ORIGEN",
+    "MOTIVO"
+  ],
+  "columnas_opcionales": [
+    "TIPOLOGIA",
+    "ARTICULO",
+    "DESCRIPCION"
+  ],
+  "notas": "Base estructural minima para validar archivos Oracle"
+}

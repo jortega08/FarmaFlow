@@ -1,0 +1,11 @@
+2026-04-29 21:02:52 | INFO | logica.lector_excel | Iniciando carga de archivo: C:\Users\mondr\OneDrive\Documentos\Proyectos\clasificador_movimientos\clasificador_farmacia\datos_prueba\movimientos_simulados.xlsx
+2026-04-29 21:02:52 | INFO | logica.lector_excel | Archivo cargado correctamente. Hoja: Movimientos, filas: 83, columnas: 16
+2026-04-29 21:02:52 | INFO | logica.validador_estructura | Iniciando validacion estructural con 16 columnas.
+2026-04-29 21:02:52 | INFO | logica.validador_estructura | Validacion finalizada. Estructura valida: True. Faltantes: 0. Mapeadas: 7.
+2026-04-29 21:02:52 | INFO | logica.normalizador_datos | Iniciando normalizacion de datos.
+2026-04-29 21:02:52 | INFO | logica.normalizador_datos | Normalizacion completada sobre 7 columnas canonicas.
+2026-04-29 21:02:52 | INFO | logica.detector_farmacias | Iniciando deteccion preliminar de farmacias.
+2026-04-29 21:02:52 | INFO | logica.detector_farmacias | Deteccion de farmacias finalizada. Candidatas encontradas: 4.
+2026-04-29 21:02:52 | INFO | logica.clasificador_tipologia | Iniciando preclasificacion con 21 reglas.
+2026-04-29 21:02:52 | INFO | logica.clasificador_tipologia | Preclasificacion finalizada. Clasificados: 78. Sin clasificar: 5.
+2026-04-29 21:02:52 | INFO | interfaz.ventana_principal | Resumen de archivo actualizado para: movimientos_simulados.xlsx
