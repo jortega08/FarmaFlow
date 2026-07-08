@@ -115,6 +115,19 @@ class EvaluadorCondiciones:
                 vals = frozenset(normalizador(valor) for valor in valores_lista)
                 return ~serie.isin(vals)
 
+            # --- comparacion contra otra columna del archivo cargado ---
+            case OperadorCondicion.EN_COLUMNA:
+                valores_columna = self._valores_columna_referencia(df, valores, normalizador)
+                if not valores_columna:
+                    return pd.Series(False, index=df.index)
+                return serie.isin(valores_columna)
+
+            case OperadorCondicion.NO_EN_COLUMNA:
+                valores_columna = self._valores_columna_referencia(df, valores, normalizador)
+                if not valores_columna:
+                    return serie.ne("")
+                return serie.ne("") & ~serie.isin(valores_columna)
+
             # --- presencia ---
             case OperadorCondicion.VACIO:
                 return serie.eq("")
@@ -150,3 +163,29 @@ class EvaluadorCondiciones:
         if campo == "TIPOLOGIA" and "TIPOLOGIA_PRELIMINAR" in df.columns:
             return "TIPOLOGIA_PRELIMINAR"
         return None
+
+    @classmethod
+    def _valores_columna_referencia(
+        cls,
+        df: pd.DataFrame,
+        valores: list[str],
+        normalizador,
+    ) -> frozenset[str]:
+        """Obtiene los valores unicos de la columna indicada en la condicion.
+
+        Ejemplo de regla JSON:
+        "ORG_ORIGEN": {"operador": "NO_EN_COLUMNA", "valor": "ORG_DESTINO"}
+
+        Con esto, ORG_ORIGEN se compara contra el conjunto de farmacias internas
+        presentes en ORG_DESTINO del archivo cargado, sin mantener listas fijas.
+        """
+        if not valores:
+            return frozenset()
+
+        columna_referencia = normalizar_nombre_columna(str(valores[0]))
+        campo_referencia = cls._resolver_campo_dataframe(df, columna_referencia)
+        if campo_referencia is None:
+            return frozenset()
+
+        serie_referencia = df[campo_referencia].map(normalizador)
+        return frozenset(valor for valor in serie_referencia if valor)
