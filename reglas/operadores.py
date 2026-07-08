@@ -18,6 +18,9 @@ class OperadorCondicion(StrEnum):
     # Listas configurables
     EN_LISTA = "EN_LISTA"
     NO_EN_LISTA = "NO_EN_LISTA"
+    # Comparacion contra otra columna del archivo cargado
+    EN_COLUMNA = "EN_COLUMNA"
+    NO_EN_COLUMNA = "NO_EN_COLUMNA"
     # Presencia de valor
     VACIO = "VACIO"
     NO_VACIO = "NO_VACIO"
@@ -43,6 +46,13 @@ OPERADORES_LISTA: frozenset[OperadorCondicion] = frozenset(
     {
         OperadorCondicion.EN_LISTA,
         OperadorCondicion.NO_EN_LISTA,
+    }
+)
+
+OPERADORES_COLUMNA: frozenset[OperadorCondicion] = frozenset(
+    {
+        OperadorCondicion.EN_COLUMNA,
+        OperadorCondicion.NO_EN_COLUMNA,
     }
 )
 
