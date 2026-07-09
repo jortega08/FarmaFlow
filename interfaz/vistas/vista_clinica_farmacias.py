@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -63,6 +63,8 @@ class _FilaFarmacia:
 class VistaClinicaFarmacias(QWidget):
     """Pantalla de seleccion de clinica y confirmacion de farmacias."""
 
+    farmacias_actualizadas = Signal()
+
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self._logger = logging.getLogger(__name__)
@@ -95,7 +97,7 @@ class VistaClinicaFarmacias(QWidget):
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         contenedor = QWidget()
         contenedor.setObjectName("contenedorVista")
@@ -295,7 +297,7 @@ class VistaClinicaFarmacias(QWidget):
         self._tabla.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self._tabla.setMinimumHeight(330)
         self._tabla.setWordWrap(False)
-        self._tabla.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._tabla.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self._tabla.itemSelectionChanged.connect(self._al_seleccionar_fila)
 
         pie = QHBoxLayout()
@@ -974,6 +976,7 @@ class VistaClinicaFarmacias(QWidget):
         self._actualizar_detalle(self._indice_seleccionado)
         self._actualizar_estado_resumen()
         self._mensaje_estado("Farmacia guardada correctamente.", "correcto")
+        self.farmacias_actualizadas.emit()
         QMessageBox.information(
             self,
             "Farmacia guardada",

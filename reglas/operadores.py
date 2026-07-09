@@ -18,6 +18,9 @@ class OperadorCondicion(StrEnum):
     # Listas configurables
     EN_LISTA = "EN_LISTA"
     NO_EN_LISTA = "NO_EN_LISTA"
+    # Comparacion contra valores unicos de otra columna del DataFrame
+    EN_COLUMNA = "EN_COLUMNA"
+    NO_EN_COLUMNA = "NO_EN_COLUMNA"
     # Presencia de valor
     VACIO = "VACIO"
     NO_VACIO = "NO_VACIO"

@@ -218,6 +218,35 @@ class PruebasFaseTres(unittest.TestCase):
                 ["ART_002", "Solucion salina", 1],
             )
 
+    def test_exportacion_renombra_valor_articulos_a_codigo(self) -> None:
+        exportador = ExportadorExcel()
+        liquidos = pd.DataFrame(
+            [{"VALOR": "ART_001", "DESCRIPCION": "Jeringa", "CONTEO": 3}]
+        )
+
+        with tempfile.TemporaryDirectory() as carpeta_temporal:
+            resultado = exportador.exportar(
+                dataframe_original=self.dataframe_original,
+                detalle_clasificado=self.estructuras["detalle_clasificado"],
+                resumen_tipologia=self.estructuras["resumen_tipologia"],
+                resumen_farmacia=self.estructuras["resumen_farmacia"],
+                cruce_tipologia_farmacia=self.estructuras["cruce_tipologia_farmacia"],
+                sin_clasificar=self.estructuras["sin_clasificar"],
+                liquidos=liquidos,
+                ruta_salida=Path(carpeta_temporal),
+                nombre_base_archivo="movimientos abril.xlsx",
+            )
+
+            libro = load_workbook(resultado.ruta_salida)
+            self.assertEqual(
+                [celda.value for celda in libro["Liquidos Cirugia"][1]],
+                ["CODIGO", "DESCRIPCION", "CONTEO"],
+            )
+            self.assertEqual(
+                [celda.value for celda in libro["Liquidos Cirugia"][2]],
+                ["ART_001", "Jeringa", 3],
+            )
+
     def test_exportador_no_muta_dataframe_original(self) -> None:
         """Garantia de que el exportador (sin deep copy) no altera la entrada."""
         exportador = ExportadorExcel()

@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
@@ -33,10 +33,13 @@ from utilidades.texto import normalizar_codigo
 class DialogoEditarLista(QDialog):
     """Permite agregar y eliminar items de una lista."""
 
+    cambios_realizados = Signal()
+
     def __init__(self, lista: ListaConfigurableDTO, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._lista = lista
         self._items: list[ItemListaDTO] = []
+        self._hubo_cambios = False
 
         self.setWindowTitle(f"Editar lista - {lista.nombre}")
         self.setMinimumWidth(620)
@@ -69,13 +72,15 @@ class DialogoEditarLista(QDialog):
         layout.setContentsMargins(14, 12, 14, 12)
         layout.setSpacing(8)
 
-        self._tabla = QTableWidget(0, 3)
-        self._tabla.setHorizontalHeaderLabels(["CODIGO", "VALOR", ""])
+        self._tabla = QTableWidget(0, 4)
+        self._tabla.setHorizontalHeaderLabels(["CODIGO", "DESCRIPCION / NOMBRE", "ESTADO", "ACCIONES"])
         encabezado = self._tabla.horizontalHeader()
         encabezado.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         encabezado.setSectionResizeMode(1, QHeaderView.Stretch)
         encabezado.setSectionResizeMode(2, QHeaderView.Fixed)
-        self._tabla.setColumnWidth(2, 92)
+        encabezado.setSectionResizeMode(3, QHeaderView.Fixed)
+        self._tabla.setColumnWidth(2, 82)
+        self._tabla.setColumnWidth(3, 96)
         self._tabla.verticalHeader().setVisible(False)
         self._tabla.setEditTriggers(QTableWidget.NoEditTriggers)
         self._tabla.setSelectionMode(QAbstractItemView.NoSelection)
@@ -90,10 +95,13 @@ class DialogoEditarLista(QDialog):
         layout.setContentsMargins(14, 12, 14, 12)
         layout.setSpacing(8)
 
-        etiqueta = QLabel("Agregar codigos")
+        etiqueta = QLabel("Agregar codigos y descripcion")
         etiqueta.setObjectName("tituloBloque")
         self._entrada_items = QPlainTextEdit()
-        self._entrada_items.setPlaceholderText("Pegue codigos separados por coma o en lineas distintas.")
+        self._entrada_items.setPlaceholderText(
+            "Pegue codigos separados por coma o en lineas distintas.\n"
+            "Opcional: CODIGO | descripcion del articulo."
+        )
         self._entrada_items.setMinimumHeight(86)
 
         boton = QPushButton("Agregar")
@@ -127,25 +135,31 @@ class DialogoEditarLista(QDialog):
         for fila, item in enumerate(sorted(self._items, key=lambda x: (x.valor_normalizado, x.id))):
             self._tabla.insertRow(fila)
             self._tabla.setItem(fila, 0, QTableWidgetItem(item.codigo or ""))
-            self._tabla.setItem(fila, 1, QTableWidgetItem(item.valor))
+            self._tabla.setItem(fila, 1, QTableWidgetItem(item.descripcion or item.valor))
+            self._tabla.setItem(fila, 2, QTableWidgetItem("Activo" if item.activo else "Inactivo"))
             eliminar = QPushButton("Eliminar")
             eliminar.setObjectName("botonTablaPeligro")
             eliminar.setFixedHeight(26)
             eliminar.clicked.connect(lambda _checked=False, item_id=item.id: self._eliminar_item(item_id))
-            self._tabla.setCellWidget(fila, 2, self._centrar(eliminar))
+            self._tabla.setCellWidget(fila, 3, self._centrar(eliminar))
             self._tabla.setRowHeight(fila, 34)
 
     def _agregar_items(self) -> None:
-        codigos = list(self._parsear_codigos(self._entrada_items.toPlainText()))
-        if not codigos:
+        items = list(self._parsear_items(self._entrada_items.toPlainText()))
+        if not items:
             return
         try:
             with sesion_scope() as sesion:
                 ServicioListas(sesion).agregar_items_masivo(
                     self._lista.id,
                     [
-                        ItemListaCrearDTO(lista_id=self._lista.id, codigo=codigo, valor=codigo)
-                        for codigo in codigos
+                        ItemListaCrearDTO(
+                            lista_id=self._lista.id,
+                            codigo=codigo,
+                            valor=codigo,
+                            descripcion=descripcion or None,
+                        )
+                        for codigo, descripcion in items
                     ],
                     ignorar_duplicados=True,
                 )
@@ -153,11 +167,13 @@ class DialogoEditarLista(QDialog):
             QMessageBox.warning(self, "No fue posible agregar items", str(error))
             return
         self._entrada_items.clear()
+        self._hubo_cambios = True
+        self.cambios_realizados.emit()
         self._cargar_items()
         QMessageBox.information(
             self,
             "Items agregados",
-            f"Se agregaron {len(codigos)} item(s) a la lista.",
+            f"Se agregaron {len(items)} item(s) a la lista.",
         )
 
     def _eliminar_item(self, item_id: int) -> None:
@@ -177,16 +193,28 @@ class DialogoEditarLista(QDialog):
             QMessageBox.warning(self, "No fue posible eliminar el item", str(error))
             return
         self._cargar_items()
+        self._hubo_cambios = True
+        self.cambios_realizados.emit()
         QMessageBox.information(self, "Item eliminado", "El item se elimino correctamente.")
+
+    def hubo_cambios(self) -> bool:
+        return self._hubo_cambios
+
+    @staticmethod
+    def _parsear_items(texto: str) -> Iterable[tuple[str, str]]:
+        vistos: set[str] = set()
+        for parte in re.split(r"[\n,;]+", texto):
+            fragmentos = [frag.strip() for frag in re.split(r"\s*\|\s*", parte, maxsplit=1)]
+            codigo = normalizar_codigo(fragmentos[0] if fragmentos else "")
+            descripcion = fragmentos[1].strip() if len(fragmentos) > 1 else ""
+            if codigo and codigo not in vistos:
+                vistos.add(codigo)
+                yield codigo, descripcion
 
     @staticmethod
     def _parsear_codigos(texto: str) -> Iterable[str]:
-        vistos: set[str] = set()
-        for parte in re.split(r"[\n,;]+", texto):
-            codigo = normalizar_codigo(parte)
-            if codigo and codigo not in vistos:
-                vistos.add(codigo)
-                yield codigo
+        for codigo, _descripcion in DialogoEditarLista._parsear_items(texto):
+            yield codigo
 
     @staticmethod
     def _centrar(widget: QWidget) -> QWidget:

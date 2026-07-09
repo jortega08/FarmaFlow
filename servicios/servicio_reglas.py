@@ -394,6 +394,9 @@ class ServicioReglas:
 
             if operador in {"VACIO", "NO_VACIO"}:
                 condiciones[campo] = {"operador": operador, "valores": []}
+            elif operador == "EN_LISTA" and valores_normalizados:
+                condiciones.setdefault(campo, [])
+                condiciones[campo].extend(valores_normalizados)
             elif operador not in {"EN", "IGUAL"} and valores_normalizados:
                 condiciones[campo] = {"operador": operador, "valores": valores_normalizados}
             elif valores_normalizados:

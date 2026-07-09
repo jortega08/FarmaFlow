@@ -21,17 +21,18 @@ class ItemNavegacion(QFrame):
         texto: str,
         numero: int | None = None,
         subtitulo: str | None = None,
+        mostrar_subtitulo: bool = False,
         parent=None,
     ) -> None:
         super().__init__(parent)
         self._clave = clave
         self._estado = ESTADO_PENDIENTE
-        self._tiene_subtitulo = bool(subtitulo)
+        self._tiene_subtitulo = bool(subtitulo and mostrar_subtitulo)
 
         self.setObjectName("itemNavNormal")
         self.setCursor(Qt.PointingHandCursor)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.setFixedHeight(58 if subtitulo else 46)
+        self.setFixedHeight(46)
 
         disposicion = QHBoxLayout(self)
         disposicion.setContentsMargins(16, 0, 16, 0)
@@ -55,7 +56,7 @@ class ItemNavegacion(QFrame):
         textos.addWidget(self._etiqueta)
 
         self._subtitulo: QLabel | None = None
-        if subtitulo:
+        if subtitulo and mostrar_subtitulo:
             self._subtitulo = QLabel(subtitulo)
             self._subtitulo.setObjectName("subtituloNav")
             self._subtitulo.setWordWrap(False)

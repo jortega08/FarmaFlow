@@ -8,7 +8,7 @@ from collections.abc import Callable
 from typing import Any
 
 import pandas as pd
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -92,6 +92,8 @@ _CATALOGO_OPERADORES: tuple[tuple[str, str], ...] = (
     (OperadorCondicion.TERMINA_EN.value, "termina en"),
     (OperadorCondicion.EN_LISTA.value, "esta en la lista"),
     (OperadorCondicion.NO_EN_LISTA.value, "no esta en la lista"),
+    (OperadorCondicion.EN_COLUMNA.value, "esta en la columna"),
+    (OperadorCondicion.NO_EN_COLUMNA.value, "no esta en la columna"),
     (OperadorCondicion.VACIO.value, "esta vacio"),
     (OperadorCondicion.NO_VACIO.value, "tiene valor"),
     (OperadorCondicion.FARMACIA_PUEDE_PRESTAR.value, "es farmacia que puede prestar"),
@@ -111,6 +113,8 @@ _OPERADORES_GENERALES: tuple[str, ...] = (
     OperadorCondicion.TERMINA_EN.value,
     OperadorCondicion.EN_LISTA.value,
     OperadorCondicion.NO_EN_LISTA.value,
+    OperadorCondicion.EN_COLUMNA.value,
+    OperadorCondicion.NO_EN_COLUMNA.value,
     OperadorCondicion.VACIO.value,
     OperadorCondicion.NO_VACIO.value,
 )
@@ -143,6 +147,8 @@ def _operadores_para_campo(campo: str) -> tuple[str, ...]:
 
 class VistaReglasClasificacion(QWidget):
     """Pantalla de administracion de reglas de clasificacion."""
+
+    cambios_configuracion = Signal(str)
 
     def __init__(
         self,
@@ -997,6 +1003,7 @@ class VistaReglasClasificacion(QWidget):
         self._mensaje_estado("Regla guardada correctamente.", "correcto")
         self._cargar_datos()
         self._seleccionar_regla_por_id(regla.id)
+        self.cambios_configuracion.emit("reglas")
         QMessageBox.information(
             self,
             "Regla guardada",
@@ -1107,6 +1114,7 @@ class VistaReglasClasificacion(QWidget):
             self._mensaje_estado("No fue posible cambiar el estado de la regla.", "error")
             return
         self._cargar_datos()
+        self.cambios_configuracion.emit("reglas")
 
     def _duplicar_regla_actual(self) -> None:
         if self._regla_actual_id is None:
@@ -1180,6 +1188,7 @@ class VistaReglasClasificacion(QWidget):
         self._mostrar_estado_vacio()
         self._mensaje_estado("Regla eliminada correctamente.", "correcto")
         self._cargar_datos()
+        self.cambios_configuracion.emit("reglas")
         QMessageBox.information(
             self,
             "Regla eliminada",
@@ -1214,6 +1223,7 @@ class VistaReglasClasificacion(QWidget):
             return
         self._mensaje_estado(f"{creadas} reglas importadas correctamente.", "correcto")
         self._cargar_datos()
+        self.cambios_configuracion.emit("reglas")
 
     def _restaurar_reglas_base(self) -> None:
         confirmacion = QMessageBox.question(
@@ -1236,6 +1246,7 @@ class VistaReglasClasificacion(QWidget):
             return
         self._mensaje_estado(f"Reglas base revisadas. Nuevas creadas: {len(creadas)}.", "correcto")
         self._cargar_datos()
+        self.cambios_configuracion.emit("reglas")
 
     def _probar_reglas(self) -> None:
         activas = sum(1 for regla in self._reglas if regla.activa)
@@ -1275,6 +1286,7 @@ class VistaReglasClasificacion(QWidget):
             return
         self._mensaje_estado("Lista creada correctamente.", "correcto")
         self._cargar_datos()
+        self.cambios_configuracion.emit("listas")
         QMessageBox.information(
             self,
             "Lista creada",
@@ -1328,6 +1340,8 @@ class VistaReglasClasificacion(QWidget):
         dialogo = DialogoEditarLista(lista, self)
         dialogo.exec()
         self._cargar_datos()
+        if dialogo.hubo_cambios():
+            self.cambios_configuracion.emit("listas")
 
     def _tarjeta_ver_todas(self, total: int) -> QFrame:
         card = QFrame()

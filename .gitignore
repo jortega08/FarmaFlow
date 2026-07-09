@@ -1,6 +1,57 @@
-.tmp_test
-__pycache__
--pytest_cache
-.spreadsheets_build
-build
-datos_prueba
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Entornos
+.venv/
+venv/
+env/
+.env
+.env.*
+.vscode/
+
+# Builds
+build/
+dist/
+*.egg-info/
+
+# PyInstaller
+*.manifest
+*.log
+
+# Node / spreadsheet build
+node_modules/
+.spreadsheet_build/node_modules/
+
+# Archivos temporales
+*.tmp
+*.temp
+*.bak
+~$*
+.DS_Store
+Thumbs.db
+.tmp_test/
+.tmp_tests/
+
+# Salidas locales
+salidas/
+exports/
+exportaciones/
+output/
+outputs/
+datos_prueba/
+
+# Excel generados de prueba
+*_SIMULADO_*.xlsx
+Casos_QA_*.xlsx
+*.backup.xlsx
+
+# Logs
+logs/
+*.log

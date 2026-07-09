@@ -8,6 +8,7 @@ import pandas as pd
 
 from modelos.resultado_preclasificacion import ResultadoPreclasificacion
 from modelos.resultado_validacion import ResultadoValidacion
+from logica.diagnostico_sin_clasificar import asegurar_diagnostico_basico
 from utilidades.texto import normalizar_codigo, normalizar_nombre_columna
 
 
@@ -17,6 +18,13 @@ COLUMNAS_AUXILIARES_EXPORTACION = (
     "TIPOLOGIA_FINAL",
     "REGLA_APLICADA",
     "REGLA_DERIVADA_APLICADA",
+    "ESTADO_CLASIFICACION",
+    "MOTIVO_SIN_CLASIFICAR",
+    "SUGERENCIA_ACCION",
+    "REGLA_CANDIDATA",
+    "CONDICIONES_CUMPLIDAS",
+    "CONDICIONES_FALLIDAS",
+    "PORCENTAJE_COINCIDENCIA_REGLA",
 )
 COLUMNAS_AUXILIARES_REQUERIDAS = (
     "FARMACIA_DETECTADA",
@@ -127,7 +135,7 @@ def generar_sin_clasificar(dataframe: pd.DataFrame) -> pd.DataFrame:
         return dataframe.iloc[0:0].copy()
 
     mascara_sin_clasificar = dataframe[columna_tipologia].fillna("") == "SIN_CLASIFICAR"
-    return dataframe.loc[mascara_sin_clasificar].copy()
+    return asegurar_diagnostico_basico(dataframe.loc[mascara_sin_clasificar].copy())
 
 
 def generar_resumen_tipologia(dataframe: pd.DataFrame) -> pd.DataFrame:

@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pandas as pd
 import pytest
 from sqlalchemy.orm import Session
 

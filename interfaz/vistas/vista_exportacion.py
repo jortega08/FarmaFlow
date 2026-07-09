@@ -60,6 +60,7 @@ class VistaExportacion(QWidget):
     exportacion_completada = Signal(object)
     estado_actualizado = Signal(str)
     procesar_otro_archivo = Signal()
+    reproceso_solicitado = Signal()
 
     def __init__(self, configuracion: dict[str, Any] | None = None, parent=None) -> None:
         super().__init__(parent)
@@ -72,6 +73,7 @@ class VistaExportacion(QWidget):
         self._checks_salida: list[QCheckBox] = []
         self._animaciones: list[QPropertyAnimation] = []
         self._worker_exportacion: WorkerExportacion | None = None
+        self._requiere_reproceso = False
 
         self._construir_ui()
         self.limpiar_resultado()
@@ -89,7 +91,7 @@ class VistaExportacion(QWidget):
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         contenedor = QWidget()
         contenedor.setObjectName("contenedorVista")
@@ -195,7 +197,7 @@ class VistaExportacion(QWidget):
             self._kpi_sin_clasificar,
             self._kpi_farmacias,
         ):
-            tarjeta.setMinimumWidth(150)
+            tarjeta.setMinimumWidth(130)
             layout.addWidget(tarjeta)
         return card
 
@@ -452,6 +454,12 @@ class VistaExportacion(QWidget):
         """Actualiza el historial visible desde persistencia."""
         self._cargar_historial()
 
+    def establecer_requiere_reproceso(self, requiere: bool) -> None:
+        """Actualiza el estado de seguridad antes de exportar."""
+        self._requiere_reproceso = bool(requiere)
+        self._actualizar_resumen()
+        self._actualizar_estado_exportar()
+
     # ------------------------------------------------------------------
     # Eventos
     # ------------------------------------------------------------------
@@ -491,10 +499,54 @@ class VistaExportacion(QWidget):
             )
             return
 
+        if self._requiere_reproceso:
+            dialogo = QMessageBox(self)
+            dialogo.setIcon(QMessageBox.Warning)
+            dialogo.setWindowTitle("Cambios pendientes sin aplicar")
+            dialogo.setText(
+                "Hay cambios pendientes sin aplicar. Se recomienda reprocesar antes de exportar.\n"
+                "Desea aplicar los cambios y reprocesar ahora?"
+            )
+            boton_reprocesar = dialogo.addButton("Reprocesar ahora", QMessageBox.AcceptRole)
+            boton_exportar = dialogo.addButton("Exportar de todos modos", QMessageBox.DestructiveRole)
+            dialogo.addButton("Cancelar", QMessageBox.RejectRole)
+            dialogo.exec()
+            seleccionado = dialogo.clickedButton()
+            if seleccionado is boton_reprocesar:
+                self.reproceso_solicitado.emit()
+                return
+            if seleccionado is not boton_exportar:
+                return
+
         resultado_carga = self._resultado_carga
         assert resultado_carga is not None
         assert resultado_carga.dataframe is not None
         assert resultado_carga.dataframe_procesado is not None
+
+        sin_clasificar = self._cantidad_sin_clasificar()
+        sin_justificacion = self._cantidad_sin_clasificar_sin_justificacion()
+        if sin_justificacion:
+            respuesta = QMessageBox.warning(
+                self,
+                "Sin clasificar sin justificacion",
+                "Existen registros sin clasificar sin justificacion tecnica. Revise antes de exportar.",
+                QMessageBox.Ok | QMessageBox.Cancel,
+                QMessageBox.Cancel,
+            )
+            if respuesta != QMessageBox.Ok:
+                return
+        if sin_clasificar:
+            respuesta = QMessageBox.question(
+                self,
+                "Registros sin clasificar",
+                f"Existen {sin_clasificar} registros sin clasificar. Desea exportar de todos modos?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if respuesta != QMessageBox.Yes:
+                return
+
+        QMessageBox.information(self, "Resumen antes de exportar", self._resumen_previo_exportacion())
 
         # UI: deshabilitar boton y mostrar progreso
         self._boton_exportar.setEnabled(False)
@@ -604,11 +656,20 @@ class VistaExportacion(QWidget):
 
         exportable = self._resultado_es_exportable(resultado)
         if exportable:
-            self._lbl_icono_estado.setObjectName("iconoEstadoCorrecto")
-            self._lbl_icono_estado.setText("OK")
-            self._lbl_estado_titulo.setObjectName("mensajeEstado")
-            self._lbl_estado_titulo.setText("Preclasificacion completada")
-            self._lbl_estado_subtitulo.setText("El archivo esta listo para exportar en formato Excel.")
+            if self._requiere_reproceso:
+                self._lbl_icono_estado.setObjectName("iconoEstadoAdvertencia")
+                self._lbl_icono_estado.setText("REV")
+                self._lbl_estado_titulo.setObjectName("mensajeEstadoAdvertencia")
+                self._lbl_estado_titulo.setText("Clasificacion requiere reproceso")
+                self._lbl_estado_subtitulo.setText(
+                    "Hay cambios en reglas, farmacias o listas. Reprocese antes de exportar."
+                )
+            else:
+                self._lbl_icono_estado.setObjectName("iconoEstadoCorrecto")
+                self._lbl_icono_estado.setText("OK")
+                self._lbl_estado_titulo.setObjectName("mensajeEstado")
+                self._lbl_estado_titulo.setText("Preclasificacion completada")
+                self._lbl_estado_subtitulo.setText("El archivo esta listo para exportar en formato Excel.")
         elif resultado:
             self._lbl_icono_estado.setObjectName("iconoEstadoAdvertencia")
             self._lbl_icono_estado.setText("REV")
@@ -645,7 +706,7 @@ class VistaExportacion(QWidget):
             and bool(self._nombre_base_archivo())
         )
         self._boton_exportar.setEnabled(habilitado)
-        self._boton_exportar.setText("Exportar Excel")
+        self._boton_exportar.setText("Reprocesar antes de exportar" if self._requiere_reproceso else "Exportar Excel")
 
     def _mostrar_resultado_exportacion(self, mensaje: str, exito: bool) -> None:
         self._barra_resultado.setVisible(True)
@@ -757,6 +818,48 @@ class VistaExportacion(QWidget):
 
     def _nombre_base_archivo(self) -> str:
         return limpiar_nombre_archivo(self._entrada_nombre.text())
+
+    def _cantidad_sin_clasificar(self) -> int:
+        resultado = self._resultado_carga
+        if resultado is None:
+            return 0
+        if resultado.resultado_preclasificacion is not None:
+            return int(resultado.resultado_preclasificacion.cantidad_sin_clasificar)
+        dataframe = resultado.dataframe_procesado
+        if dataframe is not None and "TIPOLOGIA_PRELIMINAR" in dataframe.columns:
+            return int(dataframe["TIPOLOGIA_PRELIMINAR"].fillna("").astype(str).eq("SIN_CLASIFICAR").sum())
+        return 0
+
+    def _cantidad_sin_clasificar_sin_justificacion(self) -> int:
+        resultado = self._resultado_carga
+        dataframe = resultado.dataframe_procesado if resultado is not None else None
+        if dataframe is None or "TIPOLOGIA_PRELIMINAR" not in dataframe.columns:
+            return 0
+        sin = dataframe["TIPOLOGIA_PRELIMINAR"].fillna("").astype(str).eq("SIN_CLASIFICAR")
+        if "MOTIVO_SIN_CLASIFICAR" not in dataframe.columns:
+            return int(sin.sum())
+        motivo_vacio = dataframe["MOTIVO_SIN_CLASIFICAR"].fillna("").astype(str).str.strip().eq("")
+        return int((sin & motivo_vacio).sum())
+
+    def _resumen_previo_exportacion(self) -> str:
+        resultado = self._resultado_carga
+        total = resultado.cantidad_filas if resultado else 0
+        sin_clasificar = self._cantidad_sin_clasificar()
+        sin_justificacion = self._cantidad_sin_clasificar_sin_justificacion()
+        con_justificacion = max(sin_clasificar - sin_justificacion, 0)
+        clasificados = max(total - sin_clasificar, 0)
+        hojas = ", ".join(self._hojas_seleccionadas())
+        return (
+            f"Archivo: {resultado.nombre_archivo if resultado else '-'}\n"
+            f"Total registros: {self._formato_numero(total)}\n"
+            f"Clasificados: {self._formato_numero(clasificados)}\n"
+            f"Sin clasificar: {self._formato_numero(sin_clasificar)}\n\n"
+            f"Con justificacion: {self._formato_numero(con_justificacion)}\n"
+            f"Sin justificacion: {self._formato_numero(sin_justificacion)}\n\n"
+            f"Hojas a generar: {hojas or '-'}\n\n"
+            "Configuracion usada: reglas activas, farmacias internas/externas, "
+            "articulos liquidos y articulos MCE/CIRUGIA vigentes."
+        )
 
     def _ruta_exportada(self) -> Path | None:
         if not self._resultado_exportacion or not self._resultado_exportacion.ruta_salida:

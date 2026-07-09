@@ -16,7 +16,24 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        # Optional scientific/ML stacks present in the local Python environment.
+        # FarmaFlow only needs PySide6, pandas/openpyxl/xlrd, SQLAlchemy and Alembic.
+        'IPython',
+        'jupyter',
+        'matplotlib',
+        'nbformat',
+        'notebook',
+        'pytest',
+        'scipy',
+        'sklearn',
+        'tensorflow',
+        'torch',
+        'torchaudio',
+        'torchvision',
+        'tornado',
+        'zmq',
+    ],
     noarchive=False,
     optimize=0,
 )

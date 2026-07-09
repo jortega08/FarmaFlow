@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from types import SimpleNamespace
 
 import pytest
 
@@ -46,6 +47,40 @@ _CONFIG_MINIMA: dict = {
 }
 
 
+def _resultado_carga_exportable():
+    import pandas as pd
+    from modelos.resultado_carga import ResultadoCarga
+    from modelos.resultado_preclasificacion import ResultadoPreclasificacion
+
+    df = pd.DataFrame(
+        {
+            "ORG_ORIGEN": ["16_FARMA"],
+            "ORG_DESTINO": ["47_FARMA"],
+            "TIPOLOGIA_PRELIMINAR": ["TIPO_OK"],
+            "REGLA_APLICADA": ["regla"],
+        }
+    )
+    preclasificacion = ResultadoPreclasificacion(
+        exito=True,
+        mensaje="ok",
+        cantidad_registros=1,
+        cantidad_clasificados=1,
+        cantidad_sin_clasificar=0,
+        dataframe_resultado=df,
+    )
+    return ResultadoCarga(
+        exito=True,
+        mensaje="ok",
+        nombre_archivo="archivo.xlsx",
+        cantidad_filas=1,
+        cantidad_columnas=len(df.columns),
+        dataframe=df,
+        dataframe_procesado=df.copy(),
+        resultado_preclasificacion=preclasificacion,
+        estructura_valida=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Tests de VentanaPrincipal
 # ---------------------------------------------------------------------------
@@ -75,31 +110,105 @@ class TestVentanaPrincipal:
         assert hasattr(self._ventana, "_stack")
         assert isinstance(self._ventana._stack, QStackedWidget)
 
-    def test_stack_tiene_ocho_pantallas(self):
-        assert self._ventana._stack.count() == 8
+    def test_stack_tiene_nueve_pantallas(self):
+        assert self._ventana._stack.count() == 9
 
     def test_stack_inicia_en_carga(self):
         assert self._ventana._stack.currentIndex() == 0
 
     def test_navegacion_cambia_pantalla(self):
         self._ventana._navegar_a_pantalla("clinica")
-        assert self._ventana._stack.currentIndex() == 1
+        assert self._ventana._stack.currentIndex() == 2
 
         self._ventana._navegar_a_pantalla("exportar")
-        assert self._ventana._stack.currentIndex() == 4
+        assert self._ventana._stack.currentIndex() == 5
 
         self._ventana._navegar_a_pantalla("carga")
         assert self._ventana._stack.currentIndex() == 0
 
     def test_indices_cubren_todas_las_pantallas(self):
         claves_esperadas = {
-            "carga", "clinica", "reglas", "resultado",
+            "carga", "novedades", "clinica", "reglas", "resultado",
             "exportar", "clinicas", "catalogos", "historial",
         }
         assert set(self._ventana._indices.keys()) == claves_esperadas
 
     def test_titulo_ventana_contiene_nombre_app(self):
         assert "FarmaFlow" in self._ventana.windowTitle()
+
+    def test_cambio_lista_marca_reproceso_sin_ejecutarlo(self, monkeypatch):
+        self._ventana._resultado_carga_actual = _resultado_carga_exportable()
+        llamadas = []
+        monkeypatch.setattr(self._ventana, "_reprocesar_clasificacion_actual", lambda *a, **k: llamadas.append(True))
+
+        self._ventana._al_cambio_configuracion("listas")
+
+        assert self._ventana._clasificacion_requiere_reproceso is True
+        assert llamadas == []
+        assert not self._ventana._btn_aplicar_reproceso.isHidden()
+
+    def test_boton_aplicar_cambios_reprocesa_y_limpia_estado(self, monkeypatch):
+        self._ventana._resultado_carga_actual = _resultado_carga_exportable()
+        self._ventana._clasificacion_requiere_reproceso = True
+
+        def reproceso_fake(*_args, **_kwargs):
+            self._ventana._clasificacion_requiere_reproceso = False
+            self._ventana._actualizar_estado_operativo()
+            return True
+
+        monkeypatch.setattr(self._ventana, "_reprocesar_clasificacion_actual", reproceso_fake)
+
+        self._ventana._aplicar_cambios_y_reprocesar()
+
+        assert self._ventana._clasificacion_requiere_reproceso is False
+
+    def test_exportar_con_cambios_pendientes_muestra_advertencia(self, monkeypatch):
+        import interfaz.ventana_principal as modulo
+
+        self._ventana._resultado_carga_actual = _resultado_carga_exportable()
+        self._ventana._clasificacion_requiere_reproceso = True
+        eventos = []
+
+        class FakeMessageBox:
+            Warning = 1
+            AcceptRole = 0
+            DestructiveRole = 1
+            RejectRole = 2
+
+            def __init__(self, *_args, **_kwargs):
+                self._botones = []
+                self._seleccionado = None
+
+            def setIcon(self, *_args):
+                pass
+
+            def setWindowTitle(self, titulo):
+                eventos.append(("titulo", titulo))
+
+            def setText(self, texto):
+                eventos.append(("texto", texto))
+
+            def addButton(self, texto, _rol):
+                boton = object()
+                self._botones.append((texto, boton))
+                if texto == "Cancelar":
+                    self._seleccionado = boton
+                return boton
+
+            def exec(self):
+                return None
+
+            def clickedButton(self):
+                return self._seleccionado
+
+            @staticmethod
+            def information(*_args, **_kwargs):
+                eventos.append(("info", "resumen"))
+
+        monkeypatch.setattr(modulo, "QMessageBox", FakeMessageBox)
+
+        assert self._ventana._confirmar_exportacion_segura() is False
+        assert any("cambios pendientes" in texto.lower() for tipo, texto in eventos if tipo == "texto")
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +227,7 @@ class TestSidebarNavegacion:
 
     def test_tiene_claves_principales(self):
         claves = self._sidebar.claves_pantallas()
-        for clave in ("carga", "clinica", "reglas", "resultado", "exportar"):
+        for clave in ("carga", "novedades", "clinica", "reglas", "resultado", "exportar"):
             assert clave in claves, f"Clave faltante: {clave}"
 
     def test_tiene_claves_configuracion(self):
@@ -126,8 +235,8 @@ class TestSidebarNavegacion:
         for clave in ("clinicas", "catalogos", "historial"):
             assert clave in claves, f"Clave faltante: {clave}"
 
-    def test_total_ocho_items(self):
-        assert len(self._sidebar.claves_pantallas()) == 8
+    def test_total_nueve_items(self):
+        assert len(self._sidebar.claves_pantallas()) == 9
 
     def test_activar_pantalla_no_lanza_error(self):
         self._sidebar.activar_pantalla("carga")
@@ -250,6 +359,13 @@ class TestVistasPlaceholder:
         v = VistaResultadoPreclasificacion()
         assert v is not None
 
+    def test_vista_novedades_archivo(self):
+        from interfaz.vistas.vista_novedades_archivo import VistaNovedadesArchivo
+
+        v = VistaNovedadesArchivo()
+        assert v is not None
+        assert hasattr(v, "guardar_farmacias_solicitado")
+
     def test_vista_exportacion(self):
         from interfaz.vistas.vista_exportacion import VistaExportacion
 
@@ -274,6 +390,56 @@ class TestVistasPlaceholder:
         v = VistaClinicas()
         assert v is not None
         assert callable(getattr(v, "recargar", None))
+        assert hasattr(v, "_tabla_internas")
+        assert hasattr(v, "_tabla_externas")
+        assert hasattr(v, "_tabla_pendientes")
+
+    def test_vista_catalogos_tiene_tabla_items(self):
+        from interfaz.vistas.vista_catalogos import VistaCatalogos
+
+        v = VistaCatalogos()
+        assert v is not None
+        assert v._tabla.columnCount() == 5
+        assert v._tabla.horizontalHeaderItem(0).text() == "CODIGO"
+        assert v._tabla.horizontalHeaderItem(1).text() == "DESCRIPCION / NOMBRE"
+
+    def test_vista_catalogos_boton_abrir_muestra_items_lista(self, monkeypatch):
+        from PySide6.QtWidgets import QPushButton
+
+        from interfaz.vistas.vista_catalogos import VistaCatalogos
+
+        v = VistaCatalogos()
+        v._listas = [
+            SimpleNamespace(
+                codigo="LIQUIDOS",
+                nombre="Articulos liquidos",
+                tipo_lista="ARTICULOS",
+                descripcion="",
+                activa=True,
+            )
+        ]
+        llamadas = []
+        monkeypatch.setattr(v, "_cargar_tabla_items_lista", lambda codigo: llamadas.append(codigo))
+
+        v._catalogo_actual = "LISTAS"
+        v._cargar_tabla_listas()
+
+        contenedor = v._tabla.cellWidget(0, 4)
+        boton = contenedor.findChild(QPushButton) if contenedor is not None else None
+        assert boton is not None
+
+        boton.click()
+
+        assert v._catalogo_actual == "LIQUIDOS"
+        assert llamadas == ["LIQUIDOS"]
+
+    def test_vista_historial_tiene_columnas_operativas(self):
+        from interfaz.vistas.vista_historial import VistaHistorial
+
+        v = VistaHistorial()
+        assert v is not None
+        assert v._tabla.columnCount() == 10
+        assert v._tabla.horizontalHeaderItem(7).text() == "RUTA EXPORTADA"
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +495,7 @@ class TestComponentes:
         from interfaz.componentes.sidebar_navegacion import SidebarNavegacion
 
         s = SidebarNavegacion()
-        assert len(s.claves_pantallas()) == 8
+        assert len(s.claves_pantallas()) == 9
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +546,26 @@ class TestDialogoGuardarClinica:
 
         assert extraer_farmacias_org_destino(None) == []
 
+    def test_extraer_farmacias_org_origen_devuelve_unicos(self):
+        import pandas as pd
+        from interfaz.componentes.dialogo_guardar_clinica import extraer_farmacias_org_origen
+
+        df = pd.DataFrame(
+            {
+                "ORG_ORIGEN": [
+                    "999_FARMA_EXTERNA_NUEVA",
+                    "999_FARMA_EXTERNA_NUEVA",
+                    "",
+                    "16_FARMA_FARMACIA_INTERNA_CRS",
+                ]
+            }
+        )
+
+        assert extraer_farmacias_org_origen(df) == [
+            "16_FARMA_FARMACIA_INTERNA_CRS",
+            "999_FARMA_EXTERNA_NUEVA",
+        ]
+
     def test_dialogo_instancia(self):
         from interfaz.componentes.dialogo_guardar_clinica import (
             DialogoGuardarClinica,
@@ -391,6 +577,19 @@ class TestDialogoGuardarClinica:
         assert dialogo is not None
         assert dialogo.resultado().confirmado is False
         assert callable(getattr(dialogo, "exec", None))
+
+    def test_dialogo_sugiere_externa_si_solo_aparece_en_org_origen(self):
+        from interfaz.componentes.dialogo_guardar_clinica import DialogoGuardarClinica
+
+        dialogo = DialogoGuardarClinica(
+            farmacias_detectadas=["16_FARMA_FARMACIA_INTERNA_CRS"],
+            farmacias_origen=["999_FARMA_EXTERNA_NUEVA"],
+        )
+
+        por_codigo = {farmacia.codigo: farmacia for farmacia in dialogo._farmacias}
+        assert por_codigo["16_FARMA_FARMACIA_INTERNA_CRS"].tipo_codigo == "INTERNA"
+        assert por_codigo["999_FARMA_EXTERNA_NUEVA"].tipo_codigo == "EXTERNA"
+        assert por_codigo["999_FARMA_EXTERNA_NUEVA"].origen == "ORG_ORIGEN"
 
     def test_persistir_guarda_farmacias_en_base(self, engine_temporal, monkeypatch):
         from contextlib import contextmanager
@@ -427,6 +626,17 @@ class TestDialogoGuardarClinica:
         assert resultado.farmacias_asociadas == 1
         assert [farmacia.codigo for farmacia in farmacias] == ["16_FARMA_FARMACIA_INTERNA_CRS"]
         assert farmacias[0].es_interna is True
+
+
+class TestDialogoEditarLista:
+    """Tests de captura legible para listas de articulos."""
+
+    def test_parsear_items_acepta_codigo_y_descripcion(self):
+        from interfaz.componentes.dialogo_editar_lista import DialogoEditarLista
+
+        items = list(DialogoEditarLista._parsear_items("63192 | Agua esteril\n19891"))
+
+        assert items == [("63192", "Agua esteril"), ("19891", "")]
 
 
 # ---------------------------------------------------------------------------

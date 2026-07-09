@@ -54,15 +54,21 @@ class PruebasReglasTipologia(unittest.TestCase):
         self.assertEqual(self._clasificar(filas).iloc[0]["TIPOLOGIA_PRELIMINAR"], "DEVOLUCIONES")
 
     def test_entradas_prestamos_internos(self) -> None:
-        filas = [fila_base(ORG_ORIGEN="256_FARMA_URGENCIAS_CRS",
-                           ORG_DESTINO="16_FARMA_FARMACIA_INTERNA_CRS",
-                           TIPO_TRANSACCION="INTRANSIT_RECEIPT", TIPO_ORIGEN="INVENTORY")]
+        filas = [
+            fila_base(ORG_ORIGEN="256_FARMA_URGENCIAS_CRS",
+                      ORG_DESTINO="16_FARMA_FARMACIA_INTERNA_CRS",
+                      TIPO_TRANSACCION="INTRANSIT_RECEIPT", TIPO_ORIGEN="INVENTORY"),
+            fila_base(ORG_DESTINO="256_FARMA_URGENCIAS_CRS", TIPO_TRANSACCION="UNKNOWN", TIPO_ORIGEN="UNKNOWN"),
+        ]
         self.assertEqual(self._clasificar(filas).iloc[0]["TIPOLOGIA_PRELIMINAR"], "ENTRADAS_PRESTAMOS_INTERNOS")
 
     def test_salidas_prestamos_internos(self) -> None:
-        filas = [fila_base(ORG_ORIGEN="16_FARMA_FARMACIA_INTERNA_CRS",
-                           ORG_DESTINO="47_FARMA_ALMACEN_CIRUGIA_CRS",
-                           TIPO_TRANSACCION="INTRANSIT_SHIPMENT", TIPO_ORIGEN="INVENTORY")]
+        filas = [
+            fila_base(ORG_ORIGEN="16_FARMA_FARMACIA_INTERNA_CRS",
+                      ORG_DESTINO="47_FARMA_ALMACEN_CIRUGIA_CRS",
+                      TIPO_TRANSACCION="INTRANSIT_SHIPMENT", TIPO_ORIGEN="INVENTORY"),
+            fila_base(ORG_DESTINO="16_FARMA_FARMACIA_INTERNA_CRS", TIPO_TRANSACCION="UNKNOWN", TIPO_ORIGEN="UNKNOWN"),
+        ]
         self.assertEqual(self._clasificar(filas).iloc[0]["TIPOLOGIA_PRELIMINAR"], "SALIDAS_PRESTAMOS_INTERNOS")
 
     def test_entradas_cedi(self) -> None:
@@ -87,6 +93,14 @@ class PruebasReglasTipologia(unittest.TestCase):
         ]
         resultado = self._clasificar(filas)
         self.assertTrue((resultado["TIPOLOGIA_PRELIMINAR"] == "SALIDAS_PRESTAMOS_EXTERNOS").all())
+
+    def test_prestamos_externos_detecta_farmacia_no_listada(self) -> None:
+        filas = [
+            fila_base(ORG_ORIGEN="9999_FARMA_EXTERNA_NUEVA",
+                      ORG_DESTINO="16_FARMA_FARMACIA_INTERNA_CRS",
+                      TIPO_TRANSACCION="INTRANSIT_RECEIPT", TIPO_ORIGEN="INVENTORY"),
+        ]
+        self.assertEqual(self._clasificar(filas).iloc[0]["TIPOLOGIA_PRELIMINAR"], "ENTRADAS_PRESTAMOS_EXTERNOS")
 
     def test_entradas_consignacion(self) -> None:
         filas = [fila_base(ORG_ORIGEN="102_FARMA_CONSIGN_PROV_CRS",

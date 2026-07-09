@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 
+from logica.diagnostico_sin_clasificar import aplicar_diagnostico_clasificacion
 from modelos.resultado_preclasificacion import ResultadoPreclasificacion
 from reglas.evaluador_condiciones import ContextoMotor, EvaluadorCondiciones
 from utilidades.texto import normalizar_nombre_columna, normalizar_texto, normalizar_valor_por_campo
@@ -51,6 +52,13 @@ class MotorReglasAvanzado:
         "REGLA_DERIVADA_APLICADA",
         "REGLA_DERIVADA_ID",
         "EXPLICACION_REGLA",
+        "ESTADO_CLASIFICACION",
+        "MOTIVO_SIN_CLASIFICAR",
+        "SUGERENCIA_ACCION",
+        "REGLA_CANDIDATA",
+        "CONDICIONES_CUMPLIDAS",
+        "CONDICIONES_FALLIDAS",
+        "PORCENTAJE_COINCIDENCIA_REGLA",
     )
 
     def __init__(
@@ -87,6 +95,8 @@ class MotorReglasAvanzado:
 
         if reglas_derivadas:
             self._aplicar_reglas_derivadas(df, reglas_derivadas, evaluador, contexto)
+
+        df = aplicar_diagnostico_clasificacion(df, reglas, evaluador, contexto)
 
         cantidad_registros = int(len(df))
         columna_tipologia = "TIPOLOGIA_FINAL" if "TIPOLOGIA_FINAL" in df.columns else "TIPOLOGIA_PRELIMINAR"

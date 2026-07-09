@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+import pandas as pd
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import (
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSplitter,
     QStackedWidget,
     QStatusBar,
     QVBoxLayout,
@@ -28,6 +30,7 @@ from interfaz.componentes.barra_estado import BarraEstado
 from interfaz.componentes.dialogo_guardar_clinica import (
     DialogoGuardarClinica,
     extraer_farmacias_org_destino,
+    extraer_farmacias_org_origen,
 )
 from interfaz.componentes.sidebar_navegacion import SidebarNavegacion
 from interfaz.vistas.vista_carga_archivo import VistaCargaArchivo
@@ -36,22 +39,29 @@ from interfaz.vistas.vista_clinica_farmacias import VistaClinicaFarmacias
 from interfaz.vistas.vista_clinicas import VistaClinicas
 from interfaz.vistas.vista_exportacion import VistaExportacion
 from interfaz.vistas.vista_historial import VistaHistorial
+from interfaz.vistas.vista_novedades_archivo import VistaNovedadesArchivo
 from interfaz.vistas.vista_reglas_clasificacion import VistaReglasClasificacion
 from interfaz.vistas.vista_resultado_preclasificacion import VistaResultadoPreclasificacion
 from interfaz.workers.worker_exportacion import WorkerExportacion
 from logica.exportador_excel import ExportadorExcel
+from logica.generador_resumen import generar_resumen_preclasificacion
+from logica.novedades_archivo import NovedadesArchivo, analizar_novedades_archivo
 from modelos.resultado_carga import ResultadoCarga
 from persistencia.conexion import sesion_scope
+from reglas.motor_reglas_avanzado import MotorReglasAvanzado
 from servicios.excepciones import ErrorDominio
 from servicios.fabrica_procesamiento import crear_lector_excel_con_fallback
 from servicios.servicio_autenticacion import UsuarioSesion
 from servicios.servicio_clinicas import ServicioClinicas
 from servicios.servicio_ejecuciones import ServicioEjecuciones
+from servicios.servicio_farmacias import ServicioFarmacias
+from servicios.servicio_reglas import obtener_contexto_motor, obtener_reglas_motor_avanzado
 from utilidades.mensajes import MensajesInterfaz
 from utilidades.rutas import obtener_ruta_salidas
 
 _ORDEN_PANTALLAS: tuple[str, ...] = (
     "carga",
+    "novedades",
     "clinica",
     "reglas",
     "resultado",
@@ -64,6 +74,7 @@ _ORDEN_PANTALLAS: tuple[str, ...] = (
 # Pantallas que forman el flujo principal (1 -> 5). Catalogos e historial estan fuera.
 _FLUJO_PRINCIPAL: tuple[str, ...] = (
     "carga",
+    "novedades",
     "clinica",
     "reglas",
     "resultado",
@@ -76,20 +87,24 @@ _INFO_PANTALLA: dict[str, tuple[str, str]] = {
         "Paso 1 - Carga de archivo",
         "Suba el Excel con los movimientos a procesar.",
     ),
+    "novedades": (
+        "Paso 2 - Novedades detectadas",
+        "Revise farmacias nuevas, pendientes y articulos candidatos del archivo actual.",
+    ),
     "clinica": (
-        "Paso 2 - Clinica y farmacias",
+        "Paso 3 - Clinica y farmacias",
         "Seleccione la clinica y revise las farmacias detectadas en el archivo.",
     ),
     "reglas": (
-        "Paso 3 - Reglas de clasificacion",
+        "Paso 4 - Reglas de clasificacion",
         "Revise o cree reglas para asignar tipologias a los movimientos.",
     ),
     "resultado": (
-        "Paso 4 - Resultado de la preclasificacion",
+        "Paso 5 - Resultado de la preclasificacion",
         "Inspeccione el resultado y filtre los movimientos clasificados.",
     ),
     "exportar": (
-        "Paso 5 - Exportacion",
+        "Paso 6 - Exportacion",
         "Genere el archivo Excel final con las hojas seleccionadas.",
     ),
     "clinicas": (
@@ -120,7 +135,11 @@ class VentanaPrincipal(QMainWindow):
         self._configuracion = configuracion
         self._usuario_sesion = usuario_sesion
         self._resultado_carga_actual: ResultadoCarga | None = None
+        self._novedades_actuales = NovedadesArchivo()
         self._ejecucion_actual_id: int | None = None
+        self._clasificacion_requiere_reproceso = False
+        self._farmacias_revisadas = False
+        self._listas_revisadas = False
         self._exportador_excel = ExportadorExcel()
         self._worker_exportacion_rapida: WorkerExportacion | None = None
 
@@ -128,17 +147,19 @@ class VentanaPrincipal(QMainWindow):
         if RUTA_ICONO_APP_ICO.exists():
             self.setWindowIcon(QIcon(str(RUTA_ICONO_APP_ICO)))
         self.resize(configuracion["ancho_ventana"], configuracion["alto_ventana"])
-        self.setMinimumSize(1100, 700)
+        self.setMinimumSize(960, 620)
 
         self._barra_estado = BarraEstado()
         lector_excel = crear_lector_excel_con_fallback(configuracion)
         self._vista_carga = VistaCargaArchivo(
             configuracion=configuracion, lector_excel=lector_excel
         )
+        self._vista_novedades = VistaNovedadesArchivo()
         self._vista_clinica = VistaClinicaFarmacias()
         self._vista_reglas = VistaReglasClasificacion(dataframe_provider=self.dataframe_actual)
         self._vista_resultado = VistaResultadoPreclasificacion()
         self._vista_exportacion = VistaExportacion(configuracion=configuracion)
+        self._vista_catalogos = VistaCatalogos()
         self._indices: dict[str, int] = {
             clave: i for i, clave in enumerate(_ORDEN_PANTALLAS)
         }
@@ -160,9 +181,13 @@ class VentanaPrincipal(QMainWindow):
         disposicion_raiz.setContentsMargins(0, 0, 0, 0)
         disposicion_raiz.setSpacing(0)
 
+        self._splitter_principal = QSplitter(Qt.Horizontal, widget_raiz)
+        self._splitter_principal.setChildrenCollapsible(False)
+        self._splitter_principal.setHandleWidth(6)
+
         # --- Sidebar ---
         self._sidebar = SidebarNavegacion(NOMBRE_APP)
-        disposicion_raiz.addWidget(self._sidebar)
+        self._splitter_principal.addWidget(self._sidebar)
 
         # --- Panel derecho ---
         panel_derecho = QFrame(widget_raiz)
@@ -178,22 +203,28 @@ class VentanaPrincipal(QMainWindow):
         self._stack.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         self._vista_clinicas_dashboard = VistaClinicas()
+        self._vista_historial = VistaHistorial()
         vistas: list[QWidget] = [
             self._vista_carga,
+            self._vista_novedades,
             self._vista_clinica,
             self._vista_reglas,
             self._vista_resultado,
             self._vista_exportacion,
             self._vista_clinicas_dashboard,
-            VistaCatalogos(),
-            VistaHistorial(),
+            self._vista_catalogos,
+            self._vista_historial,
         ]
         for vista in vistas:
             self._stack.addWidget(vista)
 
         disposicion_derecha.addWidget(self._stack, stretch=1)
         disposicion_derecha.addWidget(self._crear_footer_navegacion())
-        disposicion_raiz.addWidget(panel_derecho, stretch=1)
+        self._splitter_principal.addWidget(panel_derecho)
+        self._splitter_principal.setStretchFactor(0, 0)
+        self._splitter_principal.setStretchFactor(1, 1)
+        self._splitter_principal.setSizes([self._sidebar.ancho_preferido(), max(self.width() - 260, 700)])
+        disposicion_raiz.addWidget(self._splitter_principal, stretch=1)
 
         # --- Status bar ---
         barra_nativa = QStatusBar(self)
@@ -245,7 +276,43 @@ class VentanaPrincipal(QMainWindow):
 
         layout.addWidget(icono)
         layout.addLayout(textos, 1)
+        self._lbl_estado_operativo = QLabel("")
+        self._lbl_estado_operativo.setObjectName("textoSecundario")
+        self._lbl_estado_operativo.setWordWrap(True)
+        self._lbl_estado_operativo.setMinimumWidth(260)
+        layout.addWidget(self._lbl_estado_operativo)
+        self._btn_aplicar_reproceso = QPushButton("Aplicar cambios y reprocesar")
+        self._btn_aplicar_reproceso.setObjectName("botonPrincipal")
+        self._btn_aplicar_reproceso.setMinimumHeight(34)
+        self._btn_aplicar_reproceso.setVisible(False)
+        self._btn_aplicar_reproceso.clicked.connect(self._aplicar_cambios_y_reprocesar)
+        layout.addWidget(self._btn_aplicar_reproceso)
+        layout.addWidget(self._boton_sidebar("Contraer", self._contraer_sidebar))
+        layout.addWidget(self._boton_sidebar("Restaurar", self._restaurar_sidebar))
+        layout.addWidget(self._boton_sidebar("Expandir", self._expandir_sidebar))
+        self._actualizar_estado_operativo()
         return header
+
+    def _boton_sidebar(self, texto: str, slot) -> QPushButton:
+        boton = QPushButton(texto)
+        boton.setObjectName("botonTerciario")
+        boton.setMinimumHeight(30)
+        boton.setMinimumWidth(76)
+        boton.clicked.connect(slot)
+        return boton
+
+    def _contraer_sidebar(self) -> None:
+        self._ajustar_sidebar(72)
+
+    def _restaurar_sidebar(self) -> None:
+        self._ajustar_sidebar(self._sidebar.ancho_preferido())
+
+    def _expandir_sidebar(self) -> None:
+        self._ajustar_sidebar(320)
+
+    def _ajustar_sidebar(self, ancho: int) -> None:
+        total = max(sum(self._splitter_principal.sizes()), self.width())
+        self._splitter_principal.setSizes([ancho, max(total - ancho, 480)])
 
     def _crear_footer_navegacion(self) -> QFrame:
         """Crea la barra inferior con botones Anterior/Siguiente paso."""
@@ -343,6 +410,10 @@ class VentanaPrincipal(QMainWindow):
         self._actualizar_header_y_footer(clave)
         if clave == "clinicas" and hasattr(self, "_vista_clinicas_dashboard"):
             self._vista_clinicas_dashboard.recargar()
+        if clave == "historial" and hasattr(self, "_vista_historial"):
+            self._vista_historial.recargar()
+        if clave == "catalogos" and hasattr(self, "_vista_catalogos"):
+            self._vista_catalogos.recargar()
 
     # ------------------------------------------------------------------
     # Eventos
@@ -359,26 +430,52 @@ class VentanaPrincipal(QMainWindow):
         )
         self._vista_exportacion.estado_actualizado.connect(self._actualizar_estado)
         self._vista_exportacion.procesar_otro_archivo.connect(self._procesar_otro_archivo)
+        self._vista_exportacion.reproceso_solicitado.connect(self._reprocesar_clasificacion_actual)
+        self._vista_resultado.reprocesar_solicitado.connect(self._reprocesar_clasificacion_actual)
+        self._vista_novedades.guardar_farmacias_solicitado.connect(self._guardar_farmacias_desde_novedades)
+        self._vista_novedades.continuar_solicitado.connect(lambda: self._navegar_a_pantalla("resultado"))
+        self._vista_novedades.revisar_resultados_solicitado.connect(lambda: self._navegar_a_pantalla("resultado"))
+        if hasattr(self._vista_reglas, "cambios_configuracion"):
+            self._vista_reglas.cambios_configuracion.connect(self._al_cambio_configuracion)
+        if hasattr(self._vista_clinica, "farmacias_actualizadas"):
+            self._vista_clinica.farmacias_actualizadas.connect(lambda: self._al_cambio_configuracion("farmacias"))
+        if hasattr(self._vista_catalogos, "cambios_configuracion"):
+            self._vista_catalogos.cambios_configuracion.connect(self._al_cambio_configuracion)
 
     def _al_archivo_cargado(self, resultado: ResultadoCarga) -> None:
         self._resultado_carga_actual = resultado
+        self._clasificacion_requiere_reproceso = False
+        self._farmacias_revisadas = False
+        self._listas_revisadas = False
+        self._novedades_actuales = self._analizar_novedades(resultado) if resultado.estructura_valida else NovedadesArchivo()
+        self._vista_novedades.establecer_novedades(resultado, self._novedades_actuales)
         self._vista_clinica.establecer_resultado_carga(resultado)
         self._vista_resultado.establecer_resultado_carga(resultado)
         self._vista_exportacion.establecer_resultado_carga(resultado)
 
-        clinica_id = self._prompt_guardar_clinica(resultado) if resultado.estructura_valida else None
-        if clinica_id is not None:
-            self._refrescar_vistas_post_guardado_clinica()
-        self._registrar_ejecucion_carga(resultado, clinica_id=clinica_id)
+        self._registrar_ejecucion_carga(resultado, clinica_id=None)
         self._vista_carga.establecer_exportacion_disponible(
             self._resultado_es_exportable(resultado)
         )
+        self._actualizar_estado_operativo()
+        if resultado.estructura_valida:
+            self._navegar_a_pantalla("novedades")
         self._actualizar_estado(
             MensajesInterfaz.ARCHIVO_CARGADO
             if resultado.estructura_valida
             else MensajesInterfaz.ESTRUCTURA_INVALIDA
         )
         self._logger.info("Archivo cargado: %s", resultado.nombre_archivo)
+
+    def _analizar_novedades(self, resultado: ResultadoCarga) -> NovedadesArchivo:
+        dataframe = resultado.dataframe_procesado if resultado.dataframe_procesado is not None else resultado.dataframe
+        try:
+            with sesion_scope() as sesion:
+                farmacias = ServicioFarmacias(sesion).listar_farmacias(activa=True)
+        except Exception as error:  # noqa: BLE001
+            self._logger.warning("No fue posible leer farmacias conocidas para novedades: %s", error)
+            farmacias = []
+        return analizar_novedades_archivo(dataframe, farmacias)
 
     def dataframe_actual(self):
         """Devuelve el DataFrame vigente para vistas que sugieren valores del archivo."""
@@ -399,8 +496,10 @@ class VentanaPrincipal(QMainWindow):
     def _prompt_guardar_clinica(self, resultado: ResultadoCarga) -> int | None:
         """Pregunta al usuario si desea persistir farmacias detectadas y la clinica asociada."""
         dataframe_farmacias = resultado.dataframe_procesado if resultado.dataframe_procesado is not None else resultado.dataframe
-        farmacias = extraer_farmacias_org_destino(dataframe_farmacias)
-        if not farmacias:
+        farmacias_destino = extraer_farmacias_org_destino(dataframe_farmacias)
+        farmacias_origen = extraer_farmacias_org_origen(dataframe_farmacias)
+        farmacias_externas_sugeridas = sorted(set(farmacias_origen) - set(farmacias_destino))
+        if not farmacias_destino and not farmacias_origen:
             return None
 
         respuesta = QMessageBox.question(
@@ -408,9 +507,10 @@ class VentanaPrincipal(QMainWindow):
             "Guardar datos en el sistema",
             (
                 "Se cargo el archivo correctamente.\n\n"
-                f"Detectamos {len(farmacias)} farmacias en la columna ORG_DESTINO. "
+                f"Detectamos {len(farmacias_destino)} farmacias internas sugeridas en ORG_DESTINO "
+                f"y {len(farmacias_externas_sugeridas)} farmacias externas sugeridas en ORG_ORIGEN. "
                 "¿Desea guardar los datos de este archivo en el sistema y asociarlos a una clinica?\n\n"
-                "Esto permitira ver el historial de exportaciones por clinica en el dashboard."
+                "Esto permitira usar el historial local y detectar nuevas farmacias en futuros archivos."
             ),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes,
@@ -426,7 +526,8 @@ class VentanaPrincipal(QMainWindow):
             clinicas = []
 
         dialogo = DialogoGuardarClinica(
-            farmacias_detectadas=farmacias,
+            farmacias_detectadas=farmacias_destino,
+            farmacias_origen=farmacias_origen,
             clinicas_existentes=clinicas,
             parent=self,
         )
@@ -449,11 +550,17 @@ class VentanaPrincipal(QMainWindow):
 
     def _al_limpiar_carga(self) -> None:
         self._resultado_carga_actual = None
+        self._novedades_actuales = NovedadesArchivo()
         self._ejecucion_actual_id = None
+        self._clasificacion_requiere_reproceso = False
+        self._farmacias_revisadas = False
+        self._listas_revisadas = False
+        self._vista_novedades.limpiar()
         self._vista_clinica.limpiar_resultado()
         self._vista_resultado.limpiar_resultado()
         self._vista_exportacion.limpiar_resultado()
         self._vista_carga.establecer_exportacion_disponible(False)
+        self._actualizar_estado_operativo()
         self._actualizar_estado(MensajesInterfaz.LISTO)
 
     def _actualizar_estado(self, mensaje: str) -> None:
@@ -464,9 +571,221 @@ class VentanaPrincipal(QMainWindow):
         self._vista_carga.limpiar()
         self._navegar_a_pantalla("carga")
 
+    def _guardar_farmacias_desde_novedades(self) -> None:
+        if self._resultado_carga_actual is None:
+            return
+        clinica_id = self._prompt_guardar_clinica(self._resultado_carga_actual)
+        if clinica_id is None:
+            return
+        self._farmacias_revisadas = True
+        self._refrescar_vistas_post_guardado_clinica()
+        self._actualizar_estado_operativo()
+        self._al_cambio_configuracion("farmacias")
+
+    def _al_cambio_configuracion(self, origen: str = "configuracion") -> None:
+        if not self._resultado_es_exportable(self._resultado_carga_actual):
+            return
+        if origen == "listas":
+            self._listas_revisadas = True
+        if origen == "farmacias":
+            self._farmacias_revisadas = True
+        self._clasificacion_requiere_reproceso = True
+        self._actualizar_estado_operativo()
+        self._actualizar_estado(
+            "Hay cambios pendientes que pueden afectar la clasificacion. Aplique cambios y reprocese cuando termine."
+        )
+
+    def _aplicar_cambios_y_reprocesar(self) -> None:
+        self._reprocesar_clasificacion_actual()
+
+    def _reprocesar_clasificacion_actual(self, mostrar_mensaje: bool = True) -> bool:
+        """Reaplica reglas activas al DataFrame ya normalizado y refresca vistas."""
+        if not self._resultado_es_exportable(self._resultado_carga_actual):
+            QMessageBox.warning(
+                self,
+                "Reprocesar clasificacion",
+                "No hay datos clasificados disponibles para reprocesar.",
+            )
+            return False
+
+        assert self._resultado_carga_actual is not None
+        dataframe_base = self._dataframe_base_reproceso(self._resultado_carga_actual)
+        if dataframe_base.empty:
+            QMessageBox.warning(
+                self,
+                "Reprocesar clasificacion",
+                "No se encontro un DataFrame valido para reprocesar.",
+            )
+            return False
+
+        try:
+            self._actualizar_estado("Reprocesando clasificacion con reglas activas...")
+            motor = MotorReglasAvanzado(
+                proveedor_reglas=obtener_reglas_motor_avanzado,
+                proveedor_contexto=obtener_contexto_motor,
+            )
+            resultado_preclasificacion = motor.clasificar(dataframe_base)
+        except Exception as error:  # noqa: BLE001
+            self._logger.exception("No fue posible reprocesar la clasificacion.")
+            self._actualizar_estado("No fue posible reprocesar la clasificacion.")
+            QMessageBox.critical(
+                self,
+                "Error al reprocesar",
+                f"No fue posible reprocesar la clasificacion:\n{error}",
+            )
+            return False
+
+        self._resultado_carga_actual.dataframe_procesado = resultado_preclasificacion.dataframe_resultado
+        self._resultado_carga_actual.resultado_preclasificacion = resultado_preclasificacion
+        self._resultado_carga_actual.resumen_preclasificacion = generar_resumen_preclasificacion(
+            resultado_preclasificacion
+        )
+        self._vista_resultado.establecer_resultado_carga(self._resultado_carga_actual)
+        self._vista_exportacion.establecer_resultado_carga(self._resultado_carga_actual)
+        self._vista_carga.establecer_exportacion_disponible(True)
+        self._clasificacion_requiere_reproceso = False
+        self._actualizar_estado_operativo()
+        self._actualizar_estado("Clasificacion reprocesada correctamente.")
+        if mostrar_mensaje:
+            QMessageBox.information(
+                self,
+                "Clasificacion reprocesada",
+                (
+                    "Se reaplicaron las reglas activas sobre el archivo cargado.\n\n"
+                    f"Clasificados: {resultado_preclasificacion.cantidad_clasificados}\n"
+                    f"Sin clasificar: {resultado_preclasificacion.cantidad_sin_clasificar}"
+                ),
+            )
+        return True
+
+    def _dataframe_base_reproceso(self, resultado: ResultadoCarga) -> pd.DataFrame:
+        dataframe = resultado.dataframe_procesado
+        if dataframe is None:
+            return pd.DataFrame()
+        columnas_a_quitar = [
+            columna for columna in MotorReglasAvanzado.COLUMNAS_AUDITORIA if columna in dataframe.columns
+        ]
+        return dataframe.drop(columns=columnas_a_quitar).copy(deep=True)
+
+    def _actualizar_estado_operativo(self) -> None:
+        if not hasattr(self, "_lbl_estado_operativo"):
+            return
+        resultado = self._resultado_carga_actual
+        carga = "completada" if resultado and resultado.estructura_valida else "pendiente"
+        farmacias = (
+            "revisadas"
+            if self._farmacias_revisadas or self._novedades_actuales.total_pendientes == 0
+            else "pendientes"
+        )
+        listas = "revisadas" if self._listas_revisadas else "pendientes"
+        clasificacion = "requiere reproceso" if self._clasificacion_requiere_reproceso else "actualizada"
+        sin_clasificar = self._cantidad_sin_clasificar_actual()
+        exportacion = (
+            "lista"
+            if self._resultado_es_exportable(resultado) and not self._clasificacion_requiere_reproceso
+            else "no lista"
+        )
+        self._lbl_estado_operativo.setText(
+            f"Carga: {carga} | Farmacias: {farmacias} | Listas: {listas} | "
+            f"Clasificacion: {clasificacion} | Sin clasificar: {sin_clasificar} | Exportacion: {exportacion}"
+        )
+        if hasattr(self, "_btn_aplicar_reproceso"):
+            self._btn_aplicar_reproceso.setVisible(self._clasificacion_requiere_reproceso)
+            self._btn_aplicar_reproceso.setEnabled(self._resultado_es_exportable(resultado))
+        if hasattr(self, "_vista_exportacion"):
+            self._vista_exportacion.establecer_requiere_reproceso(self._clasificacion_requiere_reproceso)
+
+    def _cantidad_sin_clasificar_actual(self) -> int:
+        resultado = self._resultado_carga_actual
+        if resultado is None:
+            return 0
+        if resultado.resultado_preclasificacion is not None:
+            return int(resultado.resultado_preclasificacion.cantidad_sin_clasificar)
+        dataframe = resultado.dataframe_procesado
+        if dataframe is not None and "TIPOLOGIA_PRELIMINAR" in dataframe.columns:
+            return int(dataframe["TIPOLOGIA_PRELIMINAR"].fillna("").astype(str).eq("SIN_CLASIFICAR").sum())
+        return 0
+
     # ------------------------------------------------------------------
     # Exportacion
     # ------------------------------------------------------------------
+
+    def _confirmar_exportacion_segura(self) -> bool:
+        if self._clasificacion_requiere_reproceso:
+            dialogo = QMessageBox(self)
+            dialogo.setIcon(QMessageBox.Warning)
+            dialogo.setWindowTitle("Cambios pendientes sin aplicar")
+            dialogo.setText(
+                "Hay cambios pendientes sin aplicar. Se recomienda reprocesar antes de exportar.\n"
+                "Desea aplicar los cambios y reprocesar ahora?"
+            )
+            boton_reprocesar = dialogo.addButton("Reprocesar ahora", QMessageBox.AcceptRole)
+            boton_exportar = dialogo.addButton("Exportar de todos modos", QMessageBox.DestructiveRole)
+            dialogo.addButton("Cancelar", QMessageBox.RejectRole)
+            dialogo.exec()
+            seleccionado = dialogo.clickedButton()
+            if seleccionado is boton_reprocesar:
+                if not self._reprocesar_clasificacion_actual(mostrar_mensaje=False):
+                    return False
+            elif seleccionado is boton_exportar:
+                pass
+            else:
+                return False
+
+        sin_clasificar = self._cantidad_sin_clasificar_actual()
+        sin_justificacion = self._cantidad_sin_clasificar_sin_justificacion()
+        if sin_justificacion:
+            respuesta = QMessageBox.warning(
+                self,
+                "Sin clasificar sin justificacion",
+                "Existen registros sin clasificar sin justificacion tecnica. Revise antes de exportar.",
+                QMessageBox.Ok | QMessageBox.Cancel,
+                QMessageBox.Cancel,
+            )
+            if respuesta != QMessageBox.Ok:
+                return False
+        if sin_clasificar:
+            respuesta = QMessageBox.question(
+                self,
+                "Registros sin clasificar",
+                f"Existen {sin_clasificar} registros sin clasificar. Desea exportar de todos modos?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if respuesta != QMessageBox.Yes:
+                return False
+
+        resultado = self._resultado_carga_actual
+        total = resultado.cantidad_filas if resultado is not None else 0
+        clasificados = max(total - sin_clasificar, 0)
+        con_justificacion = max(sin_clasificar - sin_justificacion, 0)
+        QMessageBox.information(
+            self,
+            "Resumen antes de exportar",
+            (
+                f"Archivo: {resultado.nombre_archivo if resultado else '-'}\n"
+                f"Total registros: {total}\n"
+                f"Clasificados: {clasificados}\n"
+                f"Sin clasificar: {sin_clasificar}\n"
+                f"Con justificacion: {con_justificacion}\n"
+                f"Sin justificacion: {sin_justificacion}\n\n"
+                "Hojas a generar: ORIGINAL, DETALLE_CLASIFICADO, RESUMEN_TIPOLOGIA, "
+                "RESUMEN_FARMACIA, CRUCE_TIPOLOGIA_FARMACIA, SIN_CLASIFICAR, LIQUIDOS, MCE_CIRUGIA.\n\n"
+                "Configuracion usada: reglas activas, farmacias internas/externas y listas configurables vigentes."
+            ),
+        )
+        return True
+
+    def _cantidad_sin_clasificar_sin_justificacion(self) -> int:
+        resultado = self._resultado_carga_actual
+        dataframe = resultado.dataframe_procesado if resultado is not None else None
+        if dataframe is None or "TIPOLOGIA_PRELIMINAR" not in dataframe.columns:
+            return 0
+        sin = dataframe["TIPOLOGIA_PRELIMINAR"].fillna("").astype(str).eq("SIN_CLASIFICAR")
+        if "MOTIVO_SIN_CLASIFICAR" not in dataframe.columns:
+            return int(sin.sum())
+        motivo_vacio = dataframe["MOTIVO_SIN_CLASIFICAR"].fillna("").astype(str).str.strip().eq("")
+        return int((sin & motivo_vacio).sum())
 
     def _exportar_resultado_actual(self) -> None:
         """Exporta el resultado procesado en segundo plano (no bloquea la UI)."""
@@ -475,6 +794,9 @@ class VentanaPrincipal(QMainWindow):
             self._vista_carga.mostrar_resultado_exportacion(mensaje, exito=False)
             self._actualizar_estado(MensajesInterfaz.ERROR_EXPORTACION)
             QMessageBox.warning(self, "Exportacion no disponible", mensaje)
+            return
+
+        if not self._confirmar_exportacion_segura():
             return
 
         if self._worker_exportacion_rapida is not None:

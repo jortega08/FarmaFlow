@@ -17,10 +17,11 @@ from interfaz.componentes.item_navegacion import ItemNavegacion
 # (clave, titulo, numero, subtitulo)
 _PASOS_PRINCIPALES: tuple[tuple[str, str, int, str], ...] = (
     ("carga", "Carga", 1, "Sube el archivo Excel"),
-    ("clinica", "Clinica y farmacias", 2, "Confirma origen y destinos"),
-    ("reglas", "Reglas", 3, "Define como clasificar"),
-    ("resultado", "Resultado", 4, "Revisa la preclasificacion"),
-    ("exportar", "Exportar", 5, "Genera el archivo final"),
+    ("novedades", "Novedades", 2, "Revisa hallazgos del archivo"),
+    ("clinica", "Clinica y farmacias", 3, "Confirma origen y destinos"),
+    ("reglas", "Reglas", 4, "Define como clasificar"),
+    ("resultado", "Resultado", 5, "Revisa la preclasificacion"),
+    ("exportar", "Exportar", 6, "Genera el archivo final"),
 )
 
 _CONFIG_ITEMS: tuple[tuple[str, str, str], ...] = (
@@ -46,8 +47,9 @@ class SidebarNavegacion(QFrame):
         self._clave_activa: str | None = None
 
         self.setObjectName("sidebar")
-        self.setFixedWidth(260)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        self.setMinimumWidth(72)
+        self.setMaximumWidth(360)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
         self._construir_ui()
 
@@ -160,3 +162,7 @@ class SidebarNavegacion(QFrame):
     def claves_pantallas(self) -> list[str]:
         """Retorna las claves de todos los items registrados."""
         return list(self._items.keys())
+
+    def ancho_preferido(self) -> int:
+        """Ancho recomendado para restaurar la barra lateral."""
+        return 260

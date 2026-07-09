@@ -102,6 +102,20 @@ def test_operador_no_en_lista() -> None:
     assert _mascara(df, "ARTICULO", "NO_EN_LISTA", lista_id=7, contexto=contexto) == [False, True, False]
 
 
+def test_operadores_en_columna_no_en_columna() -> None:
+    df = pd.DataFrame(
+        {
+            "ORG_ORIGEN": ["16_FARMA_INTERNA", "999_FARMA_EXTERNA", ""],
+            "ORG_DESTINO": ["47_FARMA_INTERNA", "16_FARMA_INTERNA", ""],
+        }
+    )
+
+    assert _mascara(df, "ORG_ORIGEN", "EN_COLUMNA", ["ORG_DESTINO"]) == [True, False, False]
+    assert _mascara(df, "ORG_ORIGEN", "NO_EN_COLUMNA", ["ORG_DESTINO"]) == [False, True, False]
+    assert _mascara(df, "ORG_ORIGEN", "EN_COLUMNA", ["COLUMNA_AUSENTE"]) == [False, False, False]
+    assert _mascara(df, "ORG_ORIGEN", "NO_EN_COLUMNA", ["COLUMNA_AUSENTE"]) == [False, False, False]
+
+
 def test_operador_farmacia_puede_prestar() -> None:
     df = pd.DataFrame({"ORG_DESTINO": ["FARMACIA_A", "FARMACIA_B", "SIN_CATALOGO"]})
     contexto = ContextoMotor(
@@ -298,6 +312,33 @@ def test_motor_columnas_auditoria() -> None:
     assert {"TIPOLOGIA_PRELIMINAR", "REGLA_APLICADA", "REGLA_ID", "EXPLICACION_REGLA"} <= columnas
     assert resultado.dataframe_resultado.loc[0, "REGLA_ID"] == 123
     assert "devoluciones" in resultado.dataframe_resultado.loc[0, "EXPLICACION_REGLA"]
+
+
+def test_motor_reproceso_actualiza_sin_clasificar() -> None:
+    df = pd.DataFrame({"TIPO_TRANSACCION": ["NUEVA_TRANSACCION"]})
+    reglas_vacias: list[ReglaMotor] = []
+    reglas_actualizadas = [
+        ReglaMotor(
+            id=44,
+            nombre="nueva_regla",
+            prioridad=1,
+            tipologia_resultado="TIPO_NUEVO",
+            condiciones=[CondicionMotor("TIPO_TRANSACCION", "IGUAL", ["NUEVA_TRANSACCION"])],
+        )
+    ]
+
+    resultado_inicial = MotorReglasAvanzado(lambda: reglas_vacias).clasificar(df)
+    base_reproceso = resultado_inicial.dataframe_resultado.drop(
+        columns=[
+            columna
+            for columna in MotorReglasAvanzado.COLUMNAS_AUDITORIA
+            if columna in resultado_inicial.dataframe_resultado.columns
+        ]
+    )
+    resultado_reprocesado = MotorReglasAvanzado(lambda: reglas_actualizadas).clasificar(base_reproceso)
+
+    assert resultado_inicial.dataframe_resultado.loc[0, "TIPOLOGIA_PRELIMINAR"] == "SIN_CLASIFICAR"
+    assert resultado_reprocesado.dataframe_resultado.loc[0, "TIPOLOGIA_PRELIMINAR"] == "TIPO_NUEVO"
 
 
 def test_motor_compatibilidad_legado() -> None:

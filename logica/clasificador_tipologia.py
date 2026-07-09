@@ -9,6 +9,7 @@ from typing import Any
 
 import pandas as pd
 
+from logica.diagnostico_sin_clasificar import asegurar_diagnostico_basico
 from modelos.resultado_preclasificacion import ResultadoPreclasificacion
 from utilidades.rutas import cargar_json, resolver_ruta_proyecto
 from utilidades.texto import es_valor_comodin, normalizar_nombre_columna, normalizar_texto, normalizar_valor_por_campo
@@ -48,16 +49,20 @@ class ClasificadorTipologia:
         self._logger.info("Iniciando preclasificacion con %s reglas.", len(reglas))
 
         dataframe_resultado = dataframe.copy(deep=True)
+        contexto_columnas = self._construir_contexto_columnas(dataframe_resultado, reglas)
         tipologias: list[str] = []
         reglas_aplicadas: list[str] = []
 
         for _, fila in dataframe_resultado.iterrows():
-            tipologia, nombre_regla = self._clasificar_fila(fila, reglas)
+            tipologia, nombre_regla = self._clasificar_fila(fila, reglas, contexto_columnas)
             tipologias.append(tipologia)
             reglas_aplicadas.append(nombre_regla)
 
         dataframe_resultado["TIPOLOGIA_PRELIMINAR"] = tipologias
+        dataframe_resultado["TIPOLOGIA_FINAL"] = tipologias
         dataframe_resultado["REGLA_APLICADA"] = reglas_aplicadas
+        dataframe_resultado["REGLA_DERIVADA_APLICADA"] = ""
+        dataframe_resultado = asegurar_diagnostico_basico(dataframe_resultado)
 
         cantidad_registros = int(len(dataframe_resultado))
         cantidad_sin_clasificar = int((dataframe_resultado["TIPOLOGIA_PRELIMINAR"] == "SIN_CLASIFICAR").sum())
@@ -179,14 +184,24 @@ class ClasificadorTipologia:
             "resultado": resultado,
         }
 
-    def _clasificar_fila(self, fila: pd.Series, reglas: list[dict[str, Any]]) -> tuple[str, str]:
+    def _clasificar_fila(
+        self,
+        fila: pd.Series,
+        reglas: list[dict[str, Any]],
+        contexto_columnas: dict[tuple[str, str], frozenset[str]],
+    ) -> tuple[str, str]:
         """Retorna la tipologia preliminar y la regla aplicada para una fila."""
         for regla in reglas:
-            if self._coincide_regla(fila, regla["condiciones"]):
+            if self._coincide_regla(fila, regla["condiciones"], contexto_columnas):
                 return str(regla["resultado"]), str(regla["nombre_regla"])
         return "SIN_CLASIFICAR", ""
 
-    def _coincide_regla(self, fila: pd.Series, condiciones: dict[str, Any]) -> bool:
+    def _coincide_regla(
+        self,
+        fila: pd.Series,
+        condiciones: dict[str, Any],
+        contexto_columnas: dict[tuple[str, str], frozenset[str]],
+    ) -> bool:
         """Verifica si la fila satisface todas las condiciones de la regla."""
         for campo, definicion in condiciones.items():
             if isinstance(definicion, Mapping):
@@ -211,6 +226,45 @@ class ClasificadorTipologia:
                 if not any(valor in valor_fila for valor in valores_esperados):
                     return False
                 continue
+            if operador in {"EN_COLUMNA", "NO_EN_COLUMNA"}:
+                columna_referencia = normalizar_nombre_columna(valores_esperados[0]) if valores_esperados else ""
+                valores_columna = contexto_columnas.get((campo, columna_referencia))
+                if valores_columna is None or not valor_fila:
+                    return False
+                esta_en_columna = valor_fila in valores_columna
+                if operador == "EN_COLUMNA" and not esta_en_columna:
+                    return False
+                if operador == "NO_EN_COLUMNA" and esta_en_columna:
+                    return False
+                continue
             if valor_fila not in valores_esperados:
                 return False
         return True
+
+    def _construir_contexto_columnas(
+        self,
+        dataframe: pd.DataFrame,
+        reglas: list[dict[str, Any]],
+    ) -> dict[tuple[str, str], frozenset[str]]:
+        """Precalcula valores unicos para condiciones EN_COLUMNA/NO_EN_COLUMNA."""
+        contexto: dict[tuple[str, str], frozenset[str]] = {}
+        columnas_reales = {normalizar_nombre_columna(columna): str(columna) for columna in dataframe.columns}
+        for regla in reglas:
+            for campo, definicion in regla["condiciones"].items():
+                if not isinstance(definicion, Mapping):
+                    continue
+                operador = normalizar_nombre_columna(definicion.get("operador", "EN"))
+                if operador not in {"EN_COLUMNA", "NO_EN_COLUMNA"}:
+                    continue
+                valores = list(definicion.get("valores", []))
+                columna_referencia = normalizar_nombre_columna(valores[0]) if valores else ""
+                columna_real = columnas_reales.get(columna_referencia)
+                if not columna_real:
+                    continue
+                valores_columna = {
+                    normalizar_valor_por_campo(campo, valor)
+                    for valor in dataframe[columna_real].tolist()
+                    if normalizar_valor_por_campo(campo, valor)
+                }
+                contexto[(campo, columna_referencia)] = frozenset(valores_columna)
+        return contexto

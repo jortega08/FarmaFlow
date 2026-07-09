@@ -135,7 +135,10 @@ class WorkerExportacion(QRunnable):
             with sesion_scope() as sesion:
                 servicio = ServicioListas(sesion)
                 for codigo in listas:
-                    listas[codigo] = [item.valor for item in servicio.listar_items_por_codigo(codigo, activos=True)]
+                    listas[codigo] = [
+                        item.codigo or item.valor
+                        for item in servicio.listar_items_por_codigo(codigo, activos=True)
+                    ]
         except Exception:  # noqa: BLE001
             return listas
         return listas

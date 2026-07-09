@@ -16,6 +16,7 @@ import pandas as pd
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.worksheet.worksheet import Worksheet
 
+from logica.diagnostico_sin_clasificar import asegurar_diagnostico_basico
 from logica.generador_resumen import generar_resumen_articulos
 from modelos.resultado_exportacion import ResultadoExportacion
 from utilidades.mensajes import MensajesInterfaz
@@ -96,6 +97,8 @@ class ExportadorExcel:
             cruce_exportar = pd.DataFrame()
         if sin_clasificar is None:
             sin_clasificar = pd.DataFrame()
+        elif not sin_clasificar.empty:
+            sin_clasificar = asegurar_diagnostico_basico(sin_clasificar)
 
         hojas_a_exportar: dict[str, pd.DataFrame] = {
             "ORIGINAL": dataframe_original,
@@ -261,4 +264,16 @@ def _preparar_hoja_articulos(dataframe: pd.DataFrame) -> pd.DataFrame:
     columnas_resumen = ["CODIGO", "DESCRIPCION", "CONTEO"]
     if all(columna in dataframe.columns for columna in columnas_resumen):
         return dataframe.loc[:, columnas_resumen].copy()
+    columnas_mayusculas = {str(columna).upper(): columna for columna in dataframe.columns}
+    if "VALOR" in columnas_mayusculas and "CONTEO" in columnas_mayusculas:
+        preparado = dataframe.rename(
+            columns={
+                columnas_mayusculas["VALOR"]: "CODIGO",
+                columnas_mayusculas.get("DESCRIPCION", "DESCRIPCION"): "DESCRIPCION",
+                columnas_mayusculas["CONTEO"]: "CONTEO",
+            }
+        )
+        if "DESCRIPCION" not in preparado.columns:
+            preparado["DESCRIPCION"] = ""
+        return preparado.loc[:, columnas_resumen].copy()
     return generar_resumen_articulos(dataframe)

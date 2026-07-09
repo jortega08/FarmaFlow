@@ -429,9 +429,9 @@ def obtener_estilos_base() -> str:
 
     QPushButton {
         border-radius: 7px;
-        padding: 10px 16px;
+        padding: 8px 14px;
         font-weight: 700;
-        min-height: 22px;
+        min-height: 32px;
         font-size: 13px;
     }
 
@@ -531,8 +531,8 @@ def obtener_estilos_base() -> str:
         color: #124E78;
         border: 1px solid #D9E2EC;
         border-radius: 6px;
-        padding: 3px 6px;
-        min-height: 20px;
+        padding: 4px 8px;
+        min-height: 24px;
         font-size: 10px;
         font-weight: 700;
     }
@@ -547,8 +547,8 @@ def obtener_estilos_base() -> str:
         color: #B42318;
         border: 1px solid #E7AAA4;
         border-radius: 6px;
-        padding: 3px 6px;
-        min-height: 20px;
+        padding: 4px 8px;
+        min-height: 24px;
         font-size: 10px;
         font-weight: 800;
     }

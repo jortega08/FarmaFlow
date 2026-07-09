@@ -115,6 +115,19 @@ class EvaluadorCondiciones:
                 vals = frozenset(normalizador(valor) for valor in valores_lista)
                 return ~serie.isin(vals)
 
+            # --- comparacion contra otra columna del DataFrame ---
+            case OperadorCondicion.EN_COLUMNA:
+                valores_columna = self._valores_columna_referencia(df, valores, normalizador)
+                if valores_columna is None:
+                    return pd.Series(False, index=df.index)
+                return serie.ne("") & serie.isin(valores_columna)
+
+            case OperadorCondicion.NO_EN_COLUMNA:
+                valores_columna = self._valores_columna_referencia(df, valores, normalizador)
+                if valores_columna is None:
+                    return pd.Series(False, index=df.index)
+                return serie.ne("") & ~serie.isin(valores_columna)
+
             # --- presencia ---
             case OperadorCondicion.VACIO:
                 return serie.eq("")
@@ -150,3 +163,18 @@ class EvaluadorCondiciones:
         if campo == "TIPOLOGIA" and "TIPOLOGIA_PRELIMINAR" in df.columns:
             return "TIPOLOGIA_PRELIMINAR"
         return None
+
+    def _valores_columna_referencia(
+        self,
+        df: pd.DataFrame,
+        valores: list[str],
+        normalizador,
+    ) -> frozenset[str] | None:
+        """Devuelve valores unicos normalizados de la columna referenciada."""
+        if not valores:
+            return None
+        columna_referencia = self._resolver_campo_dataframe(df, normalizar_nombre_columna(valores[0]))
+        if columna_referencia is None:
+            return None
+        serie_referencia = df[columna_referencia].map(normalizador)
+        return frozenset(valor for valor in serie_referencia.unique().tolist() if valor)

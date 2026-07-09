@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 import pandas as pd
-from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from interfaz.componentes.combo_scroll_safe import ComboScrollSafe
 from interfaz.componentes.tarjeta_metrica import TarjetaMetrica
+from logica.diagnostico_sin_clasificar import asegurar_diagnostico_basico
 from modelos.resultado_carga import ResultadoCarga
 
 
@@ -47,6 +48,8 @@ _COLORES_TIPOLOGIA = (
 
 class VistaResultadoPreclasificacion(QWidget):
     """Pantalla de resultado de la preclasificacion."""
+
+    reprocesar_solicitado = Signal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
@@ -74,7 +77,7 @@ class VistaResultadoPreclasificacion(QWidget):
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
 
         contenedor = QWidget()
         contenedor.setObjectName("contenedorVista")
@@ -121,9 +124,10 @@ class VistaResultadoPreclasificacion(QWidget):
         layout.addLayout(textos, 1)
         return card
 
-    def _crear_kpis(self) -> QHBoxLayout:
-        fila = QHBoxLayout()
-        fila.setSpacing(16)
+    def _crear_kpis(self) -> QGridLayout:
+        fila = QGridLayout()
+        fila.setHorizontalSpacing(16)
+        fila.setVerticalSpacing(16)
         self._kpi_total = TarjetaMetrica(
             "Registros procesados",
             "0",
@@ -152,13 +156,13 @@ class VistaResultadoPreclasificacion(QWidget):
             tipo="neutro",
             descripcion="Incluye sin clasificar",
         )
-        for tarjeta in (
+        for indice, tarjeta in enumerate((
             self._kpi_total,
             self._kpi_clasificados,
             self._kpi_sin_clasificar,
             self._kpi_tipologias,
-        ):
-            fila.addWidget(tarjeta)
+        )):
+            fila.addWidget(tarjeta, indice // 2, indice % 2)
         return fila
 
     def _crear_distribucion(self) -> QFrame:
@@ -233,7 +237,7 @@ class VistaResultadoPreclasificacion(QWidget):
         limpiar = QPushButton("Limpiar filtros")
         limpiar.setObjectName("botonTerciario")
         limpiar.setMinimumHeight(36)
-        limpiar.setFixedWidth(150)
+        limpiar.setMinimumWidth(140)
         limpiar.clicked.connect(self._limpiar_filtros)
         layout.addWidget(limpiar, 2, len(filtros) - 1, alignment=Qt.AlignRight)
         return card
@@ -306,21 +310,34 @@ class VistaResultadoPreclasificacion(QWidget):
         panel = QVBoxLayout()
         panel.setSpacing(10)
         cab = QVBoxLayout()
-        titulo = QLabel("Excepciones / Sin clasificar")
+        titulo = QLabel("Registros pendientes de revision")
         titulo.setObjectName("tituloSubpanel")
         subtitulo = QLabel("Revise grupos sin clasificar para mejorar la precision del modelo.")
         subtitulo.setObjectName("textoSecundario")
         cab.addWidget(titulo)
         cab.addWidget(subtitulo)
 
-        self._tabla_excepciones = QTableWidget(0, 3)
-        self._tabla_excepciones.setHorizontalHeaderLabels(["GRUPO", "REGISTROS", "ACCION SUGERIDA"])
+        self._tabla_excepciones = QTableWidget(0, 11)
+        self._tabla_excepciones.setHorizontalHeaderLabels(
+            [
+                "TIPO_TRANSACCION",
+                "TIPO_ORIGEN",
+                "ORG_ORIGEN",
+                "ORG_DESTINO",
+                "ARTICULO",
+                "DESCRIPCION",
+                "SUBINVENTARIO",
+                "MOTIVO_SIN_CLASIFICAR",
+                "SUGERENCIA_ACCION",
+                "REGLA_CANDIDATA",
+                "CONDICIONES_FALLIDAS",
+            ]
+        )
         encabezado = self._tabla_excepciones.horizontalHeader()
-        encabezado.setSectionResizeMode(0, QHeaderView.Stretch)
-        encabezado.setSectionResizeMode(1, QHeaderView.Fixed)
-        encabezado.setSectionResizeMode(2, QHeaderView.Fixed)
-        self._tabla_excepciones.setColumnWidth(1, 120)
-        self._tabla_excepciones.setColumnWidth(2, 230)
+        for columna, ancho in {0: 130, 1: 120, 2: 150, 3: 150, 4: 90, 6: 120, 7: 230, 8: 220, 9: 150, 10: 190}.items():
+            encabezado.setSectionResizeMode(columna, QHeaderView.Fixed)
+            self._tabla_excepciones.setColumnWidth(columna, ancho)
+        encabezado.setSectionResizeMode(5, QHeaderView.Stretch)
         self._tabla_excepciones.verticalHeader().setVisible(False)
         self._tabla_excepciones.verticalHeader().setDefaultSectionSize(42)
         self._tabla_excepciones.setAlternatingRowColors(True)
@@ -421,6 +438,10 @@ class VistaResultadoPreclasificacion(QWidget):
         self._combo_estado.addItem("Todos", None)
         self._combo_estado.addItem("Clasificados", "CLASIFICADO")
         self._combo_estado.addItem("Sin clasificar", _SIN_CLASIFICAR)
+        self._combo_estado.addItem("Pendientes por farmacia", "PENDIENTE_FARMACIA")
+        self._combo_estado.addItem("Pendientes por articulo", "PENDIENTE_ARTICULO")
+        self._combo_estado.addItem("Pendientes por tipo transaccion", "PENDIENTE_TIPO_TRANSACCION")
+        self._combo_estado.addItem("Pendientes por regla parcial", "PENDIENTE_REGLA_PARCIAL")
         self._bloqueando_filtros = False
 
     def _combo_filtro(self) -> QComboBox:
@@ -467,6 +488,8 @@ class VistaResultadoPreclasificacion(QWidget):
             filtrado = filtrado[filtrado["TIPOLOGIA_PRELIMINAR"].fillna("").astype(str) != _SIN_CLASIFICAR]
         elif estado == _SIN_CLASIFICAR:
             filtrado = filtrado[filtrado["TIPOLOGIA_PRELIMINAR"].fillna("").astype(str) == _SIN_CLASIFICAR]
+        elif estado in {"PENDIENTE_FARMACIA", "PENDIENTE_ARTICULO", "PENDIENTE_TIPO_TRANSACCION", "PENDIENTE_REGLA_PARCIAL"}:
+            filtrado = self._filtrar_por_tipo_pendiente(filtrado, estado)
         if texto:
             columnas_busqueda = [col for col in ("ARTICULO", "DESCRIPCION") if col in filtrado.columns]
             if columnas_busqueda:
@@ -489,6 +512,26 @@ class VistaResultadoPreclasificacion(QWidget):
         self._buscador.clear()
         self._bloqueando_filtros = False
         self._aplicar_filtros()
+
+    def _filtrar_por_tipo_pendiente(self, dataframe: pd.DataFrame, estado: str) -> pd.DataFrame:
+        if dataframe.empty:
+            return dataframe
+        trabajo = dataframe
+        if "TIPOLOGIA_PRELIMINAR" in trabajo.columns:
+            trabajo = trabajo[trabajo["TIPOLOGIA_PRELIMINAR"].fillna("").astype(str) == _SIN_CLASIFICAR]
+        if trabajo.empty:
+            return trabajo
+        diagnostico = asegurar_diagnostico_basico(trabajo)
+        motivo = diagnostico["MOTIVO_SIN_CLASIFICAR"].fillna("").astype(str).str.upper()
+        if estado == "PENDIENTE_FARMACIA":
+            return diagnostico[motivo.str.contains("ORG_ORIGEN|ORG_DESTINO|FARMACIA", regex=True)]
+        if estado == "PENDIENTE_ARTICULO":
+            return diagnostico[motivo.str.contains("ARTICULO", regex=False)]
+        if estado == "PENDIENTE_TIPO_TRANSACCION":
+            return diagnostico[motivo.str.contains("TIPO_TRANSACCION", regex=False)]
+        if estado == "PENDIENTE_REGLA_PARCIAL":
+            return diagnostico[diagnostico["REGLA_CANDIDATA"].fillna("").astype(str).ne("")]
+        return diagnostico
 
     # ------------------------------------------------------------------
     # KPIs y distribucion
@@ -659,19 +702,24 @@ class VistaResultadoPreclasificacion(QWidget):
         if sin.empty:
             return
 
-        grupos = self._construir_grupos_excepcion(sin)
-        self._tabla_excepciones.setRowCount(len(grupos))
-        total = len(sin)
-        for fila, (grupo, cantidad, accion) in enumerate(grupos):
-            self._set_item(self._tabla_excepciones, fila, 0, grupo)
-            self._set_item(
-                self._tabla_excepciones,
-                fila,
-                1,
-                f"{self._formatear_entero(cantidad)} ({self._porcentaje(cantidad, total)})",
-                centro=True,
-            )
-            self._tabla_excepciones.setCellWidget(fila, 2, self._celda_centrada(self._boton_accion(accion), margen=6))
+        detalle = asegurar_diagnostico_basico(sin).head(50)
+        columnas = [
+            "TIPO_TRANSACCION",
+            "TIPO_ORIGEN",
+            "ORG_ORIGEN",
+            "ORG_DESTINO",
+            "ARTICULO",
+            "DESCRIPCION",
+            "SUBINVENTARIO",
+            "MOTIVO_SIN_CLASIFICAR",
+            "SUGERENCIA_ACCION",
+            "REGLA_CANDIDATA",
+            "CONDICIONES_FALLIDAS",
+        ]
+        self._tabla_excepciones.setRowCount(len(detalle))
+        for fila, (_idx, registro) in enumerate(detalle.iterrows()):
+            for columna, nombre in enumerate(columnas):
+                self._set_item(self._tabla_excepciones, fila, columna, self._valor_fila(registro, nombre))
             self._tabla_excepciones.setRowHeight(fila, 42)
 
     def _construir_grupos_excepcion(self, dataframe: pd.DataFrame) -> list[tuple[str, int, str]]:
@@ -695,7 +743,7 @@ class VistaResultadoPreclasificacion(QWidget):
         boton = QPushButton(texto)
         boton.setObjectName("botonTabla")
         boton.setMinimumHeight(26)
-        boton.setFixedWidth(200)
+        boton.setMinimumWidth(170)
         boton.clicked.connect(lambda: QMessageBox.information(self, "Accion sugerida", texto))
         return boton
 
@@ -804,11 +852,14 @@ class VistaResultadoPreclasificacion(QWidget):
                 self._limpiar_layout(child_layout)  # type: ignore[arg-type]
 
     def _reprocesar_info(self) -> None:
-        QMessageBox.information(
-            self,
-            "Reprocesar clasificacion",
-            "Guarde cambios en reglas, farmacias o listas y vuelva a cargar el archivo para reprocesar.",
-        )
+        if self._resultado_carga is None or self._dataframe is None or self._dataframe.empty:
+            QMessageBox.information(
+                self,
+                "Reprocesar clasificacion",
+                "Cargue un archivo antes de reprocesar la clasificacion.",
+            )
+            return
+        self.reprocesar_solicitado.emit()
 
     def _animar_entrada(self, widget: QWidget) -> None:
         efecto = QGraphicsOpacityEffect(widget)

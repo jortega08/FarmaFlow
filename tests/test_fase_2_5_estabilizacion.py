@@ -117,6 +117,29 @@ def test_integridad_de_reglas_migradas_y_comodin(sesion_temporal: Session) -> No
 
         for campo, valores in regla_json["condiciones"].items():
             campo_normalizado = normalizar_nombre_columna(campo)
+            if isinstance(valores, dict):
+                operador = normalizar_nombre_columna(valores.get("operador", "EN"))
+                valor_json = valores.get("valores", valores.get("valor", valores.get("valor_texto", [])))
+                valor_lista = valor_json if isinstance(valor_json, list) else [valor_json]
+                valores_esperados = [
+                    normalizar_valor_por_campo(campo_normalizado, valor)
+                    for valor in valor_lista
+                    if normalizar_valor_por_campo(campo_normalizado, valor)
+                ]
+                if operador in {"VACIO", "NO_VACIO"}:
+                    assert reglas_motor[nombre]["condiciones"][campo_normalizado] == {
+                        "operador": operador,
+                        "valores": [],
+                    }
+                elif operador in {"EN", "IGUAL"}:
+                    assert reglas_motor[nombre]["condiciones"][campo_normalizado] == valores_esperados
+                else:
+                    assert reglas_motor[nombre]["condiciones"][campo_normalizado] == {
+                        "operador": operador,
+                        "valores": valores_esperados,
+                    }
+                continue
+
             valores_esperados = [normalizar_valor_por_campo(campo_normalizado, valor) for valor in valores]
             assert reglas_motor[nombre]["condiciones"][campo_normalizado] == valores_esperados
 

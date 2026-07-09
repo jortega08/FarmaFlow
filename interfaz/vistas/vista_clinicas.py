@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QStackedWidget,
+    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -245,11 +246,51 @@ class VistaClinicas(QWidget):
         encabezado.setObjectName("tituloBloque")
         layout.addWidget(encabezado)
 
-        self._lbl_farmacias = QLabel("Sin farmacias asociadas a esta clinica.")
-        self._lbl_farmacias.setObjectName("textoSecundario")
-        self._lbl_farmacias.setWordWrap(True)
-        layout.addWidget(self._lbl_farmacias)
+        metricas = QHBoxLayout()
+        metricas.setSpacing(8)
+        self._tm_internas = TarjetaMetrica("Internas", "0")
+        self._tm_externas = TarjetaMetrica("Externas", "0")
+        self._tm_prestan = TarjetaMetrica("Pueden prestar", "0")
+        self._tm_no_prestan = TarjetaMetrica("No prestan", "0")
+        self._tm_pendientes = TarjetaMetrica("Pendientes", "0")
+        for tarjeta in (
+            self._tm_internas,
+            self._tm_externas,
+            self._tm_prestan,
+            self._tm_no_prestan,
+            self._tm_pendientes,
+        ):
+            metricas.addWidget(tarjeta)
+        layout.addLayout(metricas)
+
+        self._tabs_farmacias = QTabWidget()
+        self._tabla_internas = self._crear_tabla_farmacias()
+        self._tabla_externas = self._crear_tabla_farmacias()
+        self._tabla_pendientes = self._crear_tabla_farmacias(pendientes=True)
+        self._tabs_farmacias.addTab(self._tabla_internas, "Internas")
+        self._tabs_farmacias.addTab(self._tabla_externas, "Externas")
+        self._tabs_farmacias.addTab(self._tabla_pendientes, "Pendientes")
+        layout.addWidget(self._tabs_farmacias, 1)
         return card
+
+    def _crear_tabla_farmacias(self, pendientes: bool = False) -> QTableWidget:
+        tabla = QTableWidget(0, 6 if not pendientes else 5)
+        tabla.setHorizontalHeaderLabels(
+            ["CODIGO", "NOMBRE", "TIPO", "PUEDE PRESTAR", "ESTADO", "ACCIONES"]
+            if not pendientes
+            else ["CODIGO", "NOMBRE", "MOTIVO / ESTADO", "PUEDE PRESTAR", "ACCION"]
+        )
+        encabezado = tabla.horizontalHeader()
+        encabezado.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        encabezado.setSectionResizeMode(1, QHeaderView.Stretch)
+        for columna in range(2, tabla.columnCount()):
+            encabezado.setSectionResizeMode(columna, QHeaderView.ResizeToContents)
+        tabla.verticalHeader().setVisible(False)
+        tabla.setAlternatingRowColors(True)
+        tabla.setEditTriggers(QTableWidget.NoEditTriggers)
+        tabla.setSelectionBehavior(QAbstractItemView.SelectRows)
+        tabla.setMinimumHeight(170)
+        return tabla
 
     def _crear_panel_historial(self) -> QFrame:
         card = QFrame()
@@ -404,14 +445,64 @@ class VistaClinicas(QWidget):
         self._tm_clasificados.actualizar(self._formatear_numero(clasificados))
 
     def _actualizar_panel_farmacias(self) -> None:
-        if not self._farmacias_clinica:
-            self._lbl_farmacias.setText("Sin farmacias asociadas a esta clinica.")
-            return
-        nombres = [f.nombre_original for f in self._farmacias_clinica[:30]]
-        texto = ", ".join(nombres)
-        if len(self._farmacias_clinica) > 30:
-            texto += f" (+ {len(self._farmacias_clinica) - 30} mas)"
-        self._lbl_farmacias.setText(texto)
+        internas = [farmacia for farmacia in self._farmacias_clinica if farmacia.es_interna]
+        externas = [farmacia for farmacia in self._farmacias_clinica if farmacia.es_externa]
+        pendientes = [
+            farmacia
+            for farmacia in self._farmacias_clinica
+            if not farmacia.es_interna and not farmacia.es_externa
+        ]
+        prestan = [farmacia for farmacia in self._farmacias_clinica if farmacia.puede_prestar]
+        no_prestan = [farmacia for farmacia in self._farmacias_clinica if not farmacia.puede_prestar]
+
+        self._tm_internas.actualizar(str(len(internas)))
+        self._tm_externas.actualizar(str(len(externas)))
+        self._tm_prestan.actualizar(str(len(prestan)))
+        self._tm_no_prestan.actualizar(str(len(no_prestan)))
+        self._tm_pendientes.actualizar(str(len(pendientes)))
+
+        self._llenar_tabla_farmacias(self._tabla_internas, internas)
+        self._llenar_tabla_farmacias(self._tabla_externas, externas)
+        self._llenar_tabla_farmacias(self._tabla_pendientes, pendientes, pendientes=True)
+
+    def _llenar_tabla_farmacias(
+        self,
+        tabla: QTableWidget,
+        farmacias: list[FarmaciaDTO],
+        pendientes: bool = False,
+    ) -> None:
+        tabla.setRowCount(len(farmacias))
+        for fila, farmacia in enumerate(farmacias):
+            if pendientes:
+                valores = [
+                    farmacia.codigo,
+                    farmacia.nombre_original,
+                    "Sin relacion interna/externa o no clasificable",
+                    "Si" if farmacia.puede_prestar else "No",
+                    "Clasificar",
+                ]
+            else:
+                valores = [
+                    farmacia.codigo,
+                    farmacia.nombre_original,
+                    self._tipo_farmacia_texto(farmacia),
+                    "Si" if farmacia.puede_prestar else "No",
+                    "Activa" if farmacia.activa else "Inactiva",
+                    "Editar",
+                ]
+            for columna, valor in enumerate(valores):
+                item = QTableWidgetItem(str(valor))
+                item.setToolTip(str(valor))
+                item.setTextAlignment(Qt.AlignCenter if columna not in (1, 2) else Qt.AlignVCenter)
+                tabla.setItem(fila, columna, item)
+
+    @staticmethod
+    def _tipo_farmacia_texto(farmacia: FarmaciaDTO) -> str:
+        if farmacia.es_interna:
+            return "Interna"
+        if farmacia.es_externa:
+            return "Externa"
+        return "Pendiente"
 
     def _actualizar_tabla_historial(self) -> None:
         if self._clinica_seleccionada is None:
